@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Trade Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1ea;--panel:#fffdf8;--ink:#1d1b17;--mute:#6f685c;--line:#ddd6c8;--up:#c0392b;--down:#1f5fbf;--ok:#2e7d4f;--warn:#b7791f;--accent:#1d1b17}
+@media (prefers-color-scheme:dark){:root{--bg:#141310;--panel:#1c1b17;--ink:#ece6da;--mute:#9a9284;--line:#33302a;--up:#ef6b5b;--down:#6aa0ff;--ok:#5cc489;--warn:#e0a84a;--accent:#ece6da}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans KR",system-ui,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:24px 16px 64px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px 24px;border-bottom:2px solid var(--accent);padding-bottom:14px}
+h1{font-size:22px;margin:0;letter-spacing:-.02em}
+.meta{color:var(--mute);font-size:13px}
+.badge{font:500 11px "IBM Plex Mono",monospace;border:1px solid var(--line);padding:2px 8px;border-radius:99px;color:var(--mute)}
+.badge.syn{color:var(--warn);border-color:var(--warn)}
+.num{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.up{color:var(--up)}.down{color:var(--down)}
+section{margin-top:32px}
+h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 12px;font-weight:600}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:18px}
+.idx{background:var(--panel);border:1px solid var(--line);padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.idx b{font-size:18px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:10px}
+.card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.card .nm{font-weight:600;font-size:16px}.card .cd{color:var(--mute);font-size:12px}
+.score{font:600 22px "IBM Plex Mono",monospace}
+.plan{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:12px}
+.plan div{border-top:1px solid var(--line);padding-top:4px}.plan span{display:block;color:var(--mute)}
+.votes{display:flex;flex-wrap:wrap;gap:6px}.votes i{font-style:normal;font-size:11px;border:1px solid var(--ok);color:var(--ok);padding:1px 7px}
+.note{font-size:13px;color:var(--mute);border-left:2px solid var(--line);padding-left:10px}
+canvas{width:100%;height:56px;display:block}
+.empty{background:var(--panel);border:1px dashed var(--line);padding:22px;color:var(--mute)}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);font-size:13px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-weight:600;color:var(--mute);font-size:12px}
+td.r,th.r{text-align:right}
+.st{font-weight:600}.st.pass{color:var(--ok)}.st.fail{color:var(--mute)}.st.warn{color:var(--warn)}
+.scroll{overflow-x:auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);padding:12px}.kpi span{display:block;color:var(--mute);font-size:12px}.kpi b{font-size:20px}
+.foot{margin-top:40px;color:var(--mute);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
+.rule{font-size:13px;color:var(--mute);margin:-4px 0 12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>AI Trade Desk</h1>
+    <span class="meta" id="asof">불러오는 중…</span>
+    <span class="badge" id="src"></span>
+  </header>
+  <div class="strip" id="market"></div>
+
+  <section>
+    <h2>오늘의 후보 · 내일 시가 진입</h2>
+    <div id="picks"></div>
+  </section>
+
+  <section>
+    <h2>검증 게이트</h2>
+    <p class="rule" id="rule"></p>
+    <div class="scroll"><table id="val"></table></div>
+  </section>
+
+  <section>
+    <h2>모의 계좌</h2>
+    <div class="kpis" id="kpis"></div>
+    <canvas id="curve" style="height:120px"></canvas>
+    <div class="scroll" style="margin-top:12px"><table id="trades"></table></div>
+  </section>
+
+  <p class="foot">이 페이지는 과거 자료로 검증한 규칙의 결과를 보여 줄 뿐 투자 권유가 아니며 수익을 보장하지 않습니다. 매매 판단과 책임은 본인에게 있습니다.</p>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>n==null?'—':Number(n).toLocaleString('ko-KR');
+const pct=(n,d=2)=>n==null?'—':(n>0?'+':'')+Number(n).toFixed(d)+'%';
+const cls=n=>n>0?'up':n<0?'down':'';
+function spark(cv,arr,color){
+  const r=devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;cv.width=w*r;cv.height=h*r;
+  const c=cv.getContext('2d');c.scale(r,r);if(!arr||arr.length<2)return;
+  const mn=Math.min(...arr),mx=Math.max(...arr),sx=w/(arr.length-1),sy=v=>h-4-(v-mn)/((mx-mn)||1)*(h-8);
+  c.strokeStyle=color;c.lineWidth=1.5;c.beginPath();arr.forEach((v,i)=>i?c.lineTo(i*sx,sy(v)):c.moveTo(0,sy(v)));c.stroke();
+}
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const STATUS={'통과':'pass','확인 불통과':'warn'};
+
+fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()).then(d=>{
+  $('asof').textContent=`기준일 ${d.asof} · 생성 ${d.generated.replace('T',' ').slice(0,16)} · ${d.universe}종목`;
+  $('src').textContent=d.source==='synthetic'?'가상 데이터 (시험용)':'네이버 시세';
+  if(d.source==='synthetic')$('src').classList.add('syn');
+
+  $('market').innerHTML=Object.entries(d.market).map(([k,m])=>`<div class="idx"><div><div class="meta">${k}</div><b class="num">${fmt(m.close)}</b> <span class="num ${cls(m.chg_pct)}">${pct(m.chg_pct)}</span></div><canvas data-k="${k}" style="width:110px;height:40px"></canvas></div>`).join('');
+  document.querySelectorAll('#market canvas').forEach(cv=>spark(cv,d.market[cv.dataset.k].spark,css('--mute')));
+
+  const passed=d.validation.passed;
+  if(!d.picks.length){
+    $('picks').innerHTML=`<div class="empty">검증을 통과한 팩터가 ${passed.length?'있지만 조건에 맞는 종목이 없습니다':'없어 오늘은 매수 후보를 내지 않습니다'}. 근거 없이 억지로 추천하지 않는 것이 이 시스템의 규칙입니다.</div>`;
+  }else{
+    $('picks').innerHTML='<div class="cards">'+d.picks.map((p,i)=>`<div class="card">
+      <div class="top"><div><div class="nm">${p.name}</div><div class="cd num">${p.code} · ${p.market}</div></div><div class="score">${p.score_pct}</div></div>
+      <canvas id="sp${i}"></canvas>
+      <div class="plan num"><div><span>기준가</span>${fmt(p.entry_ref)}</div><div><span>손절</span>${fmt(p.stop)}</div><div><span>목표</span>${fmt(p.target)}</div><div><span>수량</span>${p.qty}주</div></div>
+      <div class="votes">${p.votes.map(v=>`<i>${v}</i>`).join('')}</div>
+      ${p.ai_note?`<div class="note">${p.ai_note}</div>`:''}
+    </div>`).join('')+'</div>';
+    d.picks.forEach((p,i)=>spark($('sp'+i),p.spark,css('--ink')));
+  }
+
+  const v=d.validation;
+  $('rule').textContent=`팩터 상위 ${v.top_quantile*100}% 바스켓을 ${v.hold_days}일 보유(왕복 비용 ${(v.cost_roundtrip*100).toFixed(2)}% 차감)했을 때 전체 평균 대비 초과수익. 탐색 t ≥ ${v.t_explore}(다중검정 보정), 확인 t ≥ ${v.t_confirm}.`;
+  const f2=x=>x==null?'—':Number(x).toFixed(2);
+  $('val').innerHTML='<tr><th>팩터</th><th>판정</th><th class="r">탐색 t</th><th class="r">탐색 초과</th><th class="r">확인 t</th><th class="r">확인 초과</th><th class="r">확인 열람</th><th class="r">지수 대비 t</th><th class="r">가중치</th></tr>'+
+    v.factors.map(r=>`<tr><td>${r.label}<div class="meta num">${r.factor}</div></td><td class="st ${STATUS[r.status]||'fail'}">${r.status}</td>
+    <td class="r num">${f2(r.explore?.t)}</td><td class="r num">${r.explore?pct(r.explore.mean*100):'—'}</td>
+    <td class="r num">${f2(r.confirm?.t)}</td><td class="r num">${r.confirm?pct(r.confirm.mean*100):'—'}</td>
+    <td class="r num">${r.confirm?.uses??'—'}</td><td class="r num">${f2(r.vs_index?.t)}</td><td class="r num">${f2(r.weight)}</td></tr>`).join('');
+
+  const P=d.paper;
+  $('kpis').innerHTML=[['평가 자산',fmt(P.equity)+'원'],['누적 수익',`<span class="${cls(P.total_ret_pct)}">${pct(P.total_ret_pct)}</span>`],['청산 건수',P.trades],['승률',P.win_rate==null?'—':P.win_rate+'%'],['평균 수익',pct(P.avg_ret_pct)],['보유/대기',Object.keys(P.positions).length+' / '+P.pending.length]]
+    .map(([k,x])=>`<div class="kpi"><span>${k}</span><b class="num">${x}</b></div>`).join('');
+  if(P.curve.length>1)spark($('curve'),P.curve.map(c=>c.equity),css('--ink'));else $('curve').style.display='none';
+  $('trades').innerHTML='<tr><th>종목</th><th>진입</th><th>청산</th><th class="r">진입가</th><th class="r">청산가</th><th class="r">수익</th><th>사유</th></tr>'+
+    (P.recent.length?P.recent.map(t=>`<tr><td>${t.name}</td><td class="num">${t.entry_date}</td><td class="num">${t.exit_date}</td><td class="r num">${fmt(t.entry)}</td><td class="r num">${fmt(t.exit)}</td><td class="r num ${cls(t.ret_pct)}">${pct(t.ret_pct)}</td><td>${t.reason}</td></tr>`).join('')
+    :'<tr><td colspan="7" class="meta">아직 청산된 거래가 없습니다.</td></tr>');
+}).catch(e=>{$('asof').textContent='데이터를 불러오지 못했습니다: '+e});
+</script>
+</body>
+</html>

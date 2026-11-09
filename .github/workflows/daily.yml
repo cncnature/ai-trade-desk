@@ -1,0 +1,51 @@
+name: daily-desk
+
+on:
+  schedule:
+    - cron: "20 7 * * 1-5"   # 평일 16:20 KST (장 마감 후)
+  workflow_dispatch:
+    inputs:
+      revalidate:
+        description: "검증 강제 재실행"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-desk
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: 시세 캐시 복원
+        uses: actions/cache@v4
+        with:
+          path: data/cache
+          key: px-${{ github.run_id }}
+          restore-keys: px-
+      - run: pip install -r requirements.txt
+      - name: 수집·검증·모의매매
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DESK_AI: ${{ vars.DESK_AI || 'off' }}
+          DESK_TOP_N: ${{ vars.DESK_TOP_N || '100' }}
+        run: python run_daily.py ${{ inputs.revalidate && '--revalidate' || '' }}
+      - name: 결과 커밋
+        run: |
+          git config user.name "desk-bot"
+          git config user.email "desk-bot@users.noreply.github.com"
+          git add docs/data state
+          git diff --cached --quiet || git commit -m "daily: $(date -u +%F)"
+          git push

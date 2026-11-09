@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+data/cache/
+state/kis_token_*.json
+state/live_positions_*.json
+.pytest_cache/
