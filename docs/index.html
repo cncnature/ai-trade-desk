@@ -313,7 +313,7 @@ async function liveTick(){
       const nx=r.nxtOverMarketPriceInfo, nxOpen=nx&&nx.overMarketStatus==='OPEN'&&nx.overPrice;
       let px=r.nv, chg=r.cr, ses='정규장';
       if(r.ms!=='OPEN'&&nxOpen){px=num(nx.overPrice);chg=num(nx.fluctuationsRatio);ses=nx.tradingSessionType==='PRE_MARKET'?'NXT 프리마켓':'NXT 애프터마켓';}
-      else if(r.ms!=='OPEN'){ses='종가';}
+      else if(r.ms!=='OPEN'){ses=kstHM()<'09:00'?'전일 종가 (NXT 미거래)':'종가';}
       LIVE.q[r.cd]={px,chg,ses};LIVE.session=ses;
     }
   }
