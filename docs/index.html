@@ -68,6 +68,12 @@ td.r,th.r{text-align:right}
   </section>
 
   <section>
+    <h2>v9 실측 기록 · 매매 안 함</h2>
+    <p class="rule" id="v9note"></p>
+    <div class="scroll"><table id="v9"></table></div>
+  </section>
+
+  <section>
     <h2>모의 계좌</h2>
     <div class="kpis" id="kpis"></div>
     <canvas id="curve" style="height:120px"></canvas>
@@ -107,6 +113,7 @@ fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()).then(d=>{
       <canvas id="sp${i}"></canvas>
       <div class="plan num"><div><span>기준가</span>${fmt(p.entry_ref)}</div><div><span>손절</span>${fmt(p.stop)}</div><div><span>목표</span>${fmt(p.target)}</div><div><span>수량</span>${p.qty}주</div></div>
       <div class="votes">${p.votes.map(v=>`<i>${v}</i>`).join('')}</div>
+      ${p.event?`<div class="note">배당 ${fmt(p.event.dps)}원 (${p.event.yield_pct}%) · 마지막 매수일 ${p.event.last_buy} · 배당락 ${p.event.ex_date} — 마지막 매수일 종가에 매도</div>`:''}
       ${p.ai_note?`<div class="note">${p.ai_note}</div>`:''}
     </div>`).join('')+'</div>';
     d.picks.forEach((p,i)=>spark($('sp'+i),p.spark,css('--ink')));
@@ -119,7 +126,12 @@ fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()).then(d=>{
     v.factors.map(r=>`<tr><td>${r.label}<div class="meta num">${r.factor}</div></td><td class="st ${STATUS[r.status]||'fail'}">${r.status}</td>
     <td class="r num">${f2(r.explore?.t)}</td><td class="r num">${r.explore?pct(r.explore.mean*100):'—'}</td>
     <td class="r num">${f2(r.confirm?.t)}</td><td class="r num">${r.confirm?pct(r.confirm.mean*100):'—'}</td>
-    <td class="r num">${r.confirm?.uses??'—'}</td><td class="r num">${f2(r.vs_index?.t)}</td><td class="r num">${f2(r.weight)}</td></tr>`).join('');
+    <td class="r num">${r.confirm?.uses??'—'}</td><td class="r num">${f2(r.vs_index?.t)}</td><td class="r num">${f2(r.weight)}</td></tr>`).join('')+
+    (v.events||[]).map(r=>`<tr><td>${r.label}<div class="meta num">${r.factor} · 이벤트 ${r.events??0}건 / 배당락일 ${r.dates??0}개${r.note?' · '+r.note:''}</div>${r.reference?`<div class="meta">${Object.entries(r.reference).map(([k,x])=>`${k}: t ${f2(x.t)}, ${pct(x.mean*100)} (${x.dates}일)`).join(' · ')}</div>`:''}</td>
+    <td class="st ${STATUS[r.status]||'fail'}">${r.status}</td>
+    <td class="r num">${f2(r.explore?.t)}</td><td class="r num">${r.explore?pct(r.explore.mean*100):'—'}</td>
+    <td class="r num">${f2(r.confirm?.t)}</td><td class="r num">${r.confirm?pct(r.confirm.mean*100):'—'}</td>
+    <td class="r num">${r.confirm?.uses??'—'}</td><td class="r num">—</td><td class="r num">${f2(r.weight)}</td></tr>`).join('');
 
   const P=d.paper;
   $('kpis').innerHTML=[['평가 자산',fmt(P.equity)+'원'],['누적 수익',`<span class="${cls(P.total_ret_pct)}">${pct(P.total_ret_pct)}</span>`],['청산 건수',P.trades],['승률',P.win_rate==null?'—':P.win_rate+'%'],['평균 수익',pct(P.avg_ret_pct)],['보유/대기',Object.keys(P.positions).length+' / '+P.pending.length]]
@@ -129,6 +141,12 @@ fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()).then(d=>{
     (P.recent.length?P.recent.map(t=>`<tr><td>${t.name}</td><td class="num">${t.entry_date}</td><td class="num">${t.exit_date}</td><td class="r num">${fmt(t.entry)}</td><td class="r num">${fmt(t.exit)}</td><td class="r num ${cls(t.ret_pct)}">${pct(t.ret_pct)}</td><td>${t.reason}</td></tr>`).join('')
     :'<tr><td colspan="7" class="meta">아직 청산된 거래가 없습니다.</td></tr>');
 }).catch(e=>{$('asof').textContent='데이터를 불러오지 못했습니다: '+e});
+
+fetch('data/v9_record.json',{cache:'no-store'}).then(r=>r.json()).then(v=>{
+  $('v9note').textContent=v.note;
+  $('v9').innerHTML='<tr><th>전략</th><th>규칙</th><th>실측 결과</th><th>판정</th><th>기준일</th></tr>'+
+    v.items.map(x=>`<tr><td><b>${x.name}</b></td><td style="white-space:normal;min-width:180px">${x.rule}</td><td style="white-space:normal;min-width:320px">${x.result}</td><td class="st ${x.verdict==='불통과'?'fail':'obs'}">${x.verdict}</td><td class="num">${x.asof}</td></tr>`).join('');
+}).catch(()=>{});
 </script>
 </body>
 </html>

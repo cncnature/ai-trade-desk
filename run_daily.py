@@ -13,6 +13,7 @@ import sys
 import pandas as pd
 
 from desk import ai, notify, score, validate
+from desk import events as event_strategy
 from desk.broker import PaperBroker
 from desk.config import CFG
 from desk.data import flow_universe, get_source, load_index, load_stock
@@ -65,6 +66,7 @@ def main() -> int:
     kosdaq = load_index(src, "KOSDAQ", CFG.history_days)
     panel = build_panel(frames, CFG.hold_days, CFG.cost_roundtrip)
     asof = str(panel["date"].max().date())
+    cal = kospi.index  # 거래일 달력
 
     # ── 검증: 주 1회(월요일 KST) + 자료 범위가 바뀌면 즉시 ──
     # 매일 다시 보면 확인 구간이 사실상 탐색 구간이 되므로 평소엔 재사용한다.
@@ -76,6 +78,7 @@ def main() -> int:
         "hold": CFG.hold_days, "q": CFG.top_quantile, "cost": CFG.cost_roundtrip,
         "factors": sorted(validate.FACTORS), "tested": CFG.tested(validate.FACTORS),
         "universe": CFG.universe_mode, "liq": CFG.liq_cut,
+        "div_events": len(event_strategy.load_events()) // 100 * 100,  # 배당 공시가 100건 늘 때마다 재검증
     }
     vpath = CFG.state_dir / "validation.json"
     old = json.loads(vpath.read_text()) if vpath.exists() else None
@@ -86,6 +89,8 @@ def main() -> int:
         print(f"  검증 재실행 ({reason})", flush=True)
         index_fwd = kospi.shift(-CFG.hold_days) / kospi - 1
         val = validate.clean_json(validate.run(panel, index_fwd))
+        val["events"] = [validate.clean_json(event_strategy.run(frames, cal))]
+        val["passed"] += [e["factor"] for e in val["events"] if e["status"] == "통과"]
         val["basis"], val["reason"] = basis, reason
         vpath.write_text(json.dumps(val, ensure_ascii=False, indent=1))
     else:
@@ -94,6 +99,9 @@ def main() -> int:
     # ── 후보 ──
     paper = PaperBroker()
     picks = score.pick(panel, val, names, paper.equity())
+    if event_strategy.NAME in val["passed"]:  # 배당 D-3 은 검정을 통과했을 때만 후보로
+        have = {p["code"] for p in picks}
+        picks += [p for p in event_strategy.upcoming(frames, cal, pd.Timestamp(asof), names) if p["code"] not in have]
     for p in picks:
         p["spark"] = [round(x) for x in frames[p["code"]]["close"].tail(60).tolist()]
         p["ai_note"] = ai.explain(p, val)

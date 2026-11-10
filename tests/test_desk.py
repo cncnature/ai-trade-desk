@@ -103,3 +103,37 @@ def test_missing_flow_is_nan_not_zero(monkeypatch):
     monkeypatch.setattr(src, "flow", lambda code, pages: (_ for _ in ()).throw(RuntimeError("blocked")))
     df = load_stock(src, "000001", 300)
     assert df["frgn_net"].isna().all() and df["frgn_hold_pct"].isna().all()
+
+
+def test_ex_dates_match_2023_year_end():
+    from desk.events import ex_dates
+
+    # 2023-12: 25일(성탄)·29일(연말 휴장) 휴장 → 기준일 12/31 이면 마지막 매수일 12/26, 배당락 12/27
+    cal = pd.DatetimeIndex([d for d in pd.bdate_range("2023-12-18", "2024-01-05")
+                            if d.strftime("%m-%d") not in ("12-25", "12-29") and d.strftime("%m-%d") != "01-01"])
+    lb, ex = ex_dates(pd.Timestamp("2023-12-31"), cal)
+    assert str(cal[lb].date()) == "2023-12-26" and str(cal[ex].date()) == "2023-12-27"
+
+
+def test_dividend_event_gate_detects_runup(tmp_path, monkeypatch):
+    import json as _json
+
+    from desk import events
+
+    src = SyntheticSource(effect=0.0)
+    frames = {s.code: load_stock(src, s.code, 600) for s in src.universe(30)}
+    cal = next(iter(frames.values())).index
+    ev, rng = [], __import__("numpy").random.default_rng(3)
+    for k, rec in enumerate(cal[30:-10:12]):
+        for code in rng.choice(list(frames), 4, replace=False):
+            ev.append({"code": code, "rcept_no": f"R{k}{code}", "disclosed": (rec - pd.Timedelta(days=20)).strftime("%Y%m%d"),
+                       "record_date": str(rec.date()), "dps": 500, "kind": "결산배당", "report": "현금ㆍ현물배당결정"})
+            # 배당락 전 3일 상승을 심는다
+            lb, ex = events.ex_dates(rec, cal)
+            f = frames[code]
+            f.loc[cal[ex - 3]:cal[lb], ["close", "high"]] *= 1.04
+    p = tmp_path / "events.json"
+    p.write_text(_json.dumps(ev))
+    monkeypatch.setattr(events, "EVENTS", p)
+    r = events.run(frames, cal)
+    assert r["dates"] >= 20 and r["status"] == "통과", r
