@@ -49,7 +49,7 @@ class Config:
     def position_cap(self, equity: float) -> float:
         return min(equity * self.max_weight, self.max_position_krw)
 
-    max_positions: int = field(default_factory=lambda: _env("DESK_MAX_POS", 6, int))
+    max_positions: int = field(default_factory=lambda: _env("DESK_MAX_POS", 20, int))
     atr_stop_mult: float = 2.0
     atr_target_mult: float = 3.0
     daily_loss_limit: float = 0.03       # 하루 -3% 넘으면 신규 매수 중지
