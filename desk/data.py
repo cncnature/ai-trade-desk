@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import os
 import re
 import time
 from dataclasses import dataclass
@@ -289,6 +290,28 @@ def _merge_cache(path: Path, fresh: pd.DataFrame) -> pd.DataFrame:
     return fresh
 
 
+FLOW_FILE = CFG.cache_dir.parent / "flow" / "flow.csv.gz"
+_FLOW_STORE: dict[str, pd.DataFrame] | None = None
+_FLOW_LOADED = False
+
+
+def flow_store() -> dict[str, pd.DataFrame] | None:
+    """서버 PC(export_flow.py)가 올린 수급 파일을 종목별로 나눠 한 번만 읽는다.
+    형식: date,code,inst_net,frgn_net,frgn_hold_pct  (gzip CSV)"""
+    global _FLOW_STORE, _FLOW_LOADED
+    if _FLOW_LOADED:
+        return _FLOW_STORE
+    _FLOW_LOADED = True
+    if not FLOW_FILE.exists():
+        return None
+    df = pd.read_csv(FLOW_FILE, dtype={"code": str}, parse_dates=["date"])
+    df["code"] = df["code"].str.zfill(6)
+    _FLOW_STORE = {c: g.drop(columns="code").drop_duplicates("date").set_index("date").sort_index()
+                   for c, g in df.groupby("code")}
+    print(f"  수급 파일: {len(_FLOW_STORE)}종목, {df['date'].min().date()}~{df['date'].max().date()}", flush=True)
+    return _FLOW_STORE
+
+
 def load_stock(src, code: str, history: int) -> pd.DataFrame:
     """가격 + 수급을 하나의 일별 표로. 캐시가 있으면 최근분만 받아 덧붙인다."""
     CFG.ensure_dirs()
@@ -302,19 +325,33 @@ def load_stock(src, code: str, history: int) -> pd.DataFrame:
         except OSError:
             return 0
 
-    px_full = synthetic or _rows(p_path) < 200
-    fl_full = synthetic or _rows(f_path) < 200
+    px_full = synthetic or _rows(p_path) < history - 30
     px = src.ohlcv(code, history if px_full else 30)
-    try:
-        fl = src.flow(code, max(1, history // 20) if fl_full else 1)
-    except Exception:  # 수급 실패는 종목을 버리지 않는다 (수급 팩터만 비게 됨)
-        fl = pd.DataFrame(columns=["inst_net", "frgn_net", "frgn_hold_pct"], dtype=float)
     if not synthetic:
         px = clean_ohlcv(_merge_cache(p_path, px))
+
+    # 수급: ① 서버 PC가 올린 data/flow/flow.csv.gz  ② (옵션) 네이버 직접 수집
+    store = flow_store()
+    empty = pd.DataFrame(columns=["inst_net", "frgn_net", "frgn_hold_pct"], dtype=float)
+    if synthetic:
+        try:
+            fl = src.flow(code, max(1, history // 20))
+        except Exception:
+            fl = empty
+    elif store is not None and code in store:
+        fl = store[code]
+    elif os.environ.get("DESK_NAVER_FLOW") == "1":
+        fl_full = _rows(f_path) < 200
+        try:
+            fl = src.flow(code, max(1, history // 20) if fl_full else 1)
+        except Exception:  # 수급 실패는 종목을 버리지 않는다 (수급 팩터만 비게 됨)
+            fl = pd.DataFrame(columns=["inst_net", "frgn_net", "frgn_hold_pct"], dtype=float)
         if len(fl):
             fl = _merge_cache(f_path, fl)
         elif f_path.exists():
             fl = pd.read_csv(f_path, index_col=0, parse_dates=True)
+    else:
+        fl = pd.DataFrame(columns=["inst_net", "frgn_net", "frgn_hold_pct"], dtype=float)
     df = px.join(fl, how="left")
     # 수급 자료가 있는 기간 안에서만 빈 날을 0으로 채운다. 자료가 아예 없으면 NaN 그대로 둬서
     # 수급 팩터가 '0' 이 아니라 '자료 없음' 으로 처리되게 한다.

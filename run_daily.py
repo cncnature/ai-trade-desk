@@ -25,8 +25,17 @@ def main() -> int:
     ap.add_argument("--revalidate", action="store_true")
     ap.add_argument("--no-notify", action="store_true")
     ap.add_argument("--diag", action="store_true", help="데이터 주소 접속 점검만 하고 종료")
+    ap.add_argument("--skip-if-done-today", action="store_true",
+                    help="오늘(KST) 이미 실행됐으면 건너뜀 — 아침 예비 실행용")
     args = ap.parse_args()
     CFG.ensure_dirs()
+    if args.skip_if_done_today:
+        lp = CFG.docs_data_dir / "latest.json"
+        today = pd.Timestamp.now(tz="Asia/Seoul").strftime("%Y-%m-%d")
+        if lp.exists() and json.loads(lp.read_text()).get("generated", "").startswith(today) \
+                and json.loads(lp.read_text()).get("source") != "synthetic":
+            print(f"오늘({today}) 이미 실행됨 — 건너뜀")
+            return 0
     if args.diag:
         from desk.data import diagnose
 

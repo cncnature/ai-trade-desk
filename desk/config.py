@@ -22,7 +22,7 @@ class Config:
     # ── 데이터 ─────────────────────────────────────────────
     data_source: str = field(default_factory=lambda: _env("DESK_DATA", "naver"))  # naver | synthetic
     top_n_per_market: int = field(default_factory=lambda: _env("DESK_TOP_N", 100, int))  # 코스피·코스닥 각각 시총 상위 N
-    history_days: int = field(default_factory=lambda: _env("DESK_HISTORY", 600, int))
+    history_days: int = field(default_factory=lambda: _env("DESK_HISTORY", 1500, int))
     cache_dir: Path = ROOT / "data" / "cache"
     state_dir: Path = ROOT / "state"
     docs_data_dir: Path = ROOT / "docs" / "data"
