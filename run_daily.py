@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date
 
 import pandas as pd
 
@@ -63,14 +62,29 @@ def main() -> int:
     panel = build_panel(frames, CFG.hold_days, CFG.cost_roundtrip)
     asof = str(panel["date"].max().date())
 
-    # ── 검증 (주 1회) ──
+    # ── 검증: 주 1회(월요일 KST) + 자료 범위가 바뀌면 즉시 ──
+    # 매일 다시 보면 확인 구간이 사실상 탐색 구간이 되므로 평소엔 재사용한다.
+    # 단, 수집 기간·종목 수·수급 연결 여부·규칙이 바뀌면 이전 판정은 다른 자료에 대한 것이므로 다시 한다.
+    flow_cov = sum(1 for f in frames.values() if f["frgn_hold_pct"].notna().any())
+    basis = {
+        "panel_from": str(panel["date"].min().date()), "codes": int(panel["code"].nunique()),
+        "flow": int(round(flow_cov / 20)) * 20,  # 소폭 변동에는 반응하지 않게 20 단위
+        "hold": CFG.hold_days, "q": CFG.top_quantile, "cost": CFG.cost_roundtrip,
+        "factors": sorted(validate.FACTORS),
+    }
     vpath = CFG.state_dir / "validation.json"
-    if args.revalidate or not vpath.exists() or date.today().weekday() == 0:
+    old = json.loads(vpath.read_text()) if vpath.exists() else None
+    monday = pd.Timestamp.now(tz="Asia/Seoul").weekday() == 0
+    reason = ("강제" if args.revalidate else "첫 실행" if old is None else
+              "자료 범위 변경" if old.get("basis") != basis else "월요일" if monday else None)
+    if reason:
+        print(f"  검증 재실행 ({reason})", flush=True)
         index_fwd = kospi.shift(-CFG.hold_days) / kospi - 1
         val = validate.clean_json(validate.run(panel, index_fwd))
+        val["basis"], val["reason"] = basis, reason
         vpath.write_text(json.dumps(val, ensure_ascii=False, indent=1))
     else:
-        val = json.loads(vpath.read_text())
+        val = old
 
     # ── 후보 ──
     paper = PaperBroker()
