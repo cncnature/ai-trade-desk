@@ -87,7 +87,21 @@ Windows 작업 스케줄러 예시: 평일 16:20 `python run_daily.py`, 평일 0
    - Variables: (선택) `DESK_TOP_N`, `DESK_AI=anthropic`
 3. **Actions → daily-desk → Run workflow** 로 첫 실행 (`revalidate` 체크)
 
-이후 평일 16:20 KST 마다 자동 실행되고 `docs/data/latest.json` 과 `state/` 가 커밋됩니다. 모의 장부도 저장소에 쌓이므로 기록이 남습니다.
+이후 평일 아침(서버 PC 업로드 직후, 늦어도 07:50 KST) 자동 실행되고 `docs/data/latest.json` 과 `state/` 가 커밋됩니다. 모의 장부도 저장소에 쌓이므로 기록이 남습니다.
+
+### 서버 PC 수급 연동 (외국인·기관 수급 팩터용)
+
+네이버 수급 페이지는 해외(GitHub 서버)에서 막히므로, 국내에 있는 서버 PC 의 `C:\toss-core\flow.db` 를 매일 올린다.
+
+```powershell
+git clone https://github.com/cncnature/ai-trade-desk C:\ai-trade-desk
+cd C:\ai-trade-desk
+pip install pandas
+python pc\export_flow.py            # 첫 실행: 전체 이력 업로드 → Actions 자동 실행
+powershell -ExecutionPolicy Bypass -File pc\install_task.ps1   # 평일 07:30 자동 업로드 등록
+```
+
+흐름(KST): 07:20 토스 코어 자동 운영이 flow.db 갱신 → 07:30 업로드 → 즉시 분석·텔레그램. 07:50 예비 실행은 그날 이미 돌았으면 건너뛴다.
 
 > 증권사 키는 Actions 에 넣지 마세요. 실계좌 주문(`run_trade.py`)은 **내 PC에서만** 실행하도록 설계했습니다.
 

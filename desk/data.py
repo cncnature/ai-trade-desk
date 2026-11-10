@@ -304,7 +304,10 @@ def flow_store() -> dict[str, pd.DataFrame] | None:
     _FLOW_LOADED = True
     if not FLOW_FILE.exists():
         return None
-    df = pd.read_csv(FLOW_FILE, dtype={"code": str}, parse_dates=["date"])
+    parts = [pd.read_csv(FLOW_FILE, dtype={"code": str}, parse_dates=["date"])]
+    for p in sorted((FLOW_FILE.parent / "daily").glob("*.csv")):  # 기본 파일 이후 매일 추가분
+        parts.append(pd.read_csv(p, dtype={"code": str}, parse_dates=["date"]))
+    df = pd.concat(parts, ignore_index=True)
     df["code"] = df["code"].str.zfill(6)
     _FLOW_STORE = {c: g.drop(columns="code").drop_duplicates("date").set_index("date").sort_index()
                    for c, g in df.groupby("code")}
