@@ -29,7 +29,7 @@ def bonferroni_t(n_tests: int, alpha: float = 0.05) -> float:
 
 
 def _tstat(x: pd.Series) -> tuple[float, float, int]:
-    x = x.dropna()
+    x = x.replace([np.inf, -np.inf], np.nan).dropna()
     n = len(x)
     if n < 8 or x.std() == 0:
         return float("nan"), float(x.mean()) if n else float("nan"), n

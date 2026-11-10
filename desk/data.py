@@ -139,14 +139,49 @@ class NaverSource:
             recs.append((p[0], *map(float, p[1:6])))
         df = pd.DataFrame(recs, columns=["date", "open", "high", "low", "close", "volume"])
         df["date"] = pd.to_datetime(df["date"], format="%Y%m%d")
-        return df.set_index("date").sort_index()
+        return clean_ohlcv(df.set_index("date").sort_index())
 
     def flow(self, code: str, pages: int) -> pd.DataFrame:
-        """기관·외국인 순매매량(주), 외국인 보유율(%)."""
+        """기관·외국인 순매매량(주), 외국인 보유율(%). PC 페이지 → 모바일 API 순으로 시도."""
+        try:
+            df = self._flow_pc(code, pages)
+            if len(df):
+                return df
+        except Exception:
+            pass
+        return self._flow_mobile(code, pages * 20)
+
+    def _flow_mobile(self, code: str, n: int) -> pd.DataFrame:
+        import json
+
+        j = json.loads(self._get(f"https://m.stock.naver.com/api/stock/{code}/trend", {"pageSize": min(n, 200)}))
+        rows = j if isinstance(j, list) else j.get("trends") or j.get("result") or []
+
+        def pick(r, *keys):
+            for k in keys:
+                if k in r and r[k] not in (None, ""):
+                    return float(str(r[k]).replace(",", "").replace("%", "").replace("+", ""))
+            return float("nan")
+
+        recs = []
+        for r in rows:
+            dt = str(r.get("bizdate") or r.get("localTradedAt") or "")[:10].replace("-", "")
+            if not re.fullmatch(r"\d{8}", dt):
+                continue
+            recs.append({"date": pd.Timestamp(dt),
+                         "inst_net": pick(r, "organPureBuyQuant", "institutionPureBuyQuant"),
+                         "frgn_net": pick(r, "foreignerPureBuyQuant", "foreignPureBuyQuant"),
+                         "frgn_hold_pct": pick(r, "foreignerHoldRatio", "foreignHoldRatio")})
+        if not recs:
+            return pd.DataFrame(columns=["inst_net", "frgn_net", "frgn_hold_pct"], dtype=float)
+        return pd.DataFrame(recs).drop_duplicates("date").set_index("date").sort_index()
+
+    def _flow_pc(self, code: str, pages: int) -> pd.DataFrame:
         from bs4 import BeautifulSoup
 
         recs = []
         for page in range(1, pages + 1):
+            self.s.headers["Referer"] = f"https://finance.naver.com/item/main.naver?code={code}"
             html = self._get(
                 "https://finance.naver.com/item/frgn.naver", {"code": code, "page": page}, encoding="euc-kr"
             )
@@ -227,6 +262,17 @@ class SyntheticSource:
         return self._make(code)[["inst_net", "frgn_net", "frgn_hold_pct"]].tail(pages * 20)
 
 
+def clean_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
+    """거래정지일 등 시가·고가·저가가 0 으로 오는 행을 종가로 메우고, 종가가 0 이하인 행은 버린다."""
+    df = df[df["close"] > 0].copy()
+    for col in ("open", "high", "low"):
+        bad = df[col] <= 0
+        df.loc[bad, col] = df.loc[bad, "close"]
+    df["high"] = df[["high", "open", "close"]].max(axis=1)
+    df["low"] = df[["low", "open", "close"]].min(axis=1)
+    return df
+
+
 def get_source():
     return SyntheticSource() if CFG.data_source == "synthetic" else NaverSource()
 
@@ -249,20 +295,33 @@ def load_stock(src, code: str, history: int) -> pd.DataFrame:
     p_path = CFG.cache_dir / f"{code}_px.csv"
     f_path = CFG.cache_dir / f"{code}_flow.csv"
     synthetic = isinstance(src, SyntheticSource)
-    px = src.ohlcv(code, 30 if (p_path.exists() and not synthetic) else history)
+
+    def _rows(path: Path) -> int:  # 캐시가 비었거나 짧으면 처음부터 다시 받는다
+        try:
+            return sum(1 for _ in open(path, encoding="utf-8")) - 1
+        except OSError:
+            return 0
+
+    px_full = synthetic or _rows(p_path) < 200
+    fl_full = synthetic or _rows(f_path) < 200
+    px = src.ohlcv(code, history if px_full else 30)
     try:
-        fl = src.flow(code, 1 if (f_path.exists() and not synthetic) else max(1, history // 20))
+        fl = src.flow(code, max(1, history // 20) if fl_full else 1)
     except Exception:  # 수급 실패는 종목을 버리지 않는다 (수급 팩터만 비게 됨)
         fl = pd.DataFrame(columns=["inst_net", "frgn_net", "frgn_hold_pct"], dtype=float)
     if not synthetic:
-        px = _merge_cache(p_path, px)
+        px = clean_ohlcv(_merge_cache(p_path, px))
         if len(fl):
             fl = _merge_cache(f_path, fl)
         elif f_path.exists():
             fl = pd.read_csv(f_path, index_col=0, parse_dates=True)
     df = px.join(fl, how="left")
-    df[["inst_net", "frgn_net"]] = df[["inst_net", "frgn_net"]].fillna(0.0)
-    df["frgn_hold_pct"] = df["frgn_hold_pct"].ffill()
+    # 수급 자료가 있는 기간 안에서만 빈 날을 0으로 채운다. 자료가 아예 없으면 NaN 그대로 둬서
+    # 수급 팩터가 '0' 이 아니라 '자료 없음' 으로 처리되게 한다.
+    if len(fl):
+        inside = df.index >= fl.index.min()
+        df.loc[inside, ["inst_net", "frgn_net"]] = df.loc[inside, ["inst_net", "frgn_net"]].fillna(0.0)
+        df["frgn_hold_pct"] = df["frgn_hold_pct"].ffill()
     return df.tail(history)
 
 
@@ -280,6 +339,7 @@ def diagnose() -> None:
         "일봉 fchart": ("https://fchart.stock.naver.com/sise.nhn",
                         {"symbol": "005930", "timeframe": "day", "count": 5, "requestType": 0}),
         "수급 frgn": ("https://finance.naver.com/item/frgn.naver", {"code": "005930", "page": 1}),
+        "수급 모바일": ("https://m.stock.naver.com/api/stock/005930/trend", {"pageSize": 5}),
     }
     for name, (url, params) in tests.items():
         try:

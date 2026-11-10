@@ -49,12 +49,13 @@ def compute(df: pd.DataFrame) -> pd.DataFrame:
     out["atr_pct"] = atr(df, 14) / c
     out["close"] = c
     out["value_traded"] = (c * v).rolling(20).mean()
-    return out
+    return out.replace([np.inf, -np.inf], np.nan)
 
 
 def forward_return(df: pd.DataFrame, hold: int, cost: float) -> pd.Series:
     """신호일 t → t+1 시가 매수, t+hold 종가 매도. 비용 차감."""
-    return df["close"].shift(-hold) / df["open"].shift(-1) - 1 - cost
+    entry = df["open"].shift(-1).where(lambda x: x > 0)
+    return (df["close"].shift(-hold) / entry - 1 - cost).replace([np.inf, -np.inf], np.nan)
 
 
 def build_panel(frames: dict[str, pd.DataFrame], hold: int, cost: float) -> pd.DataFrame:

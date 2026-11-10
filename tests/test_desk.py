@@ -84,3 +84,22 @@ def test_live_order_locked_without_phrase(monkeypatch):
 
     with pytest.raises(PermissionError):
         KISBroker("live").order("005930", 1, "buy")
+
+
+def test_zero_open_rows_are_cleaned_and_no_inf():
+    from desk.data import clean_ohlcv
+
+    df = pd.DataFrame({"open": [100, 0, 102, 103], "high": [101, 0, 103, 104], "low": [99, 0, 101, 102],
+                       "close": [100, 101, 102, 103], "volume": [1, 0, 1, 1]},
+                      index=pd.bdate_range("2026-01-01", periods=4)).astype(float)
+    c = clean_ohlcv(df)
+    assert (c["open"] > 0).all()
+    fr = forward_return(df, hold=1, cost=0.0)
+    assert not fr.isin([float("inf"), float("-inf")]).any()
+
+
+def test_missing_flow_is_nan_not_zero(monkeypatch):
+    src = SyntheticSource(effect=0.0)
+    monkeypatch.setattr(src, "flow", lambda code, pages: (_ for _ in ()).throw(RuntimeError("blocked")))
+    df = load_stock(src, "000001", 300)
+    assert df["frgn_net"].isna().all() and df["frgn_hold_pct"].isna().all()

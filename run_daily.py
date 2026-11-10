@@ -93,6 +93,7 @@ def main() -> int:
     out = validate.clean_json({
         "asof": asof, "generated": pd.Timestamp.now(tz="Asia/Seoul").isoformat(timespec="minutes"),
         "source": CFG.data_source, "universe": len(frames), "failed": len(failed),
+        "flow_coverage": sum(1 for f in frames.values() if f["frgn_hold_pct"].notna().any()),
         "market": {"KOSPI": idx(kospi), "KOSDAQ": idx(kosdaq)},
         "validation": val, "picks": picks, "paper": psum, "events": events,
     })
@@ -107,7 +108,7 @@ def main() -> int:
         print(msg)
     else:
         notify.send(msg)
-    print(f"완료: {asof} · 종목 {len(frames)} · 통과 팩터 {val['passed']} · 후보 {len(picks)}")
+    print(f"완료: {asof} · 종목 {len(frames)} · 수급 확보 {out['flow_coverage']} · 통과 팩터 {val['passed']} · 후보 {len(picks)}")
     return 0
 
 

@@ -91,7 +91,7 @@ const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim
 const STATUS={'통과':'pass','확인 불통과':'warn'};
 
 fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()).then(d=>{
-  $('asof').textContent=`기준일 ${d.asof} · 생성 ${d.generated.replace('T',' ').slice(0,16)} · ${d.universe}종목`;
+  $('asof').textContent=`기준일 ${d.asof} · 생성 ${d.generated.replace('T',' ').slice(0,16)} · ${d.universe}종목`+(d.flow_coverage!=null?` · 수급 ${d.flow_coverage}종목`:'');
   $('src').textContent=d.source==='synthetic'?'가상 데이터 (시험용)':'네이버 시세';
   if(d.source==='synthetic')$('src').classList.add('syn');
 
