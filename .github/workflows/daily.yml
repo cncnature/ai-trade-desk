@@ -26,7 +26,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -47,6 +47,10 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           DESK_AI: ${{ vars.DESK_AI || 'off' }}
           DESK_TOP_N: ${{ vars.DESK_TOP_N || '100' }}
+          # 사전 등록(2026-11-10): 전 종목 · 외국인 보유율 수준 단일 검정 · 추가 유동성 컷 없음 (H5 와 같은 조건)
+          DESK_UNIVERSE: flow
+          DESK_FACTORS: frgn_hold
+          DESK_LIQ_CUT: "0"
         run: |
           ARGS=""
           if [ "${{ github.event_name }}" = "schedule" ]; then ARGS="--skip-if-done-today"; fi

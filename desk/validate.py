@@ -40,8 +40,9 @@ def excess_series(panel: pd.DataFrame, factor: str, q: float, hold: int, min_nam
     """날짜별 (바스켓 수익, 전체 평균, 초과) — 겹치지 않는 표본만."""
     d = panel.dropna(subset=[factor, "fwd"])
     # 유동성 하위 20% 제외 (체결 불가 종목으로 성적이 부풀지 않게)
-    liq_cut = d.groupby("date")["value_traded"].transform(lambda s: s.quantile(0.2))
-    d = d[d["value_traded"] >= liq_cut]
+    if CFG.liq_cut > 0:
+        liq_cut = d.groupby("date")["value_traded"].transform(lambda s: s.quantile(CFG.liq_cut))
+        d = d[d["value_traded"] >= liq_cut]
     dates = sorted(d["date"].unique())[::hold]
     d = d[d["date"].isin(dates)]
     rows = []
@@ -58,7 +59,8 @@ def excess_series(panel: pd.DataFrame, factor: str, q: float, hold: int, min_nam
 
 def run(panel: pd.DataFrame, index_fwd: pd.Series | None = None) -> dict:
     hold, q = CFG.hold_days, CFG.top_quantile
-    t_explore = max(CFG.explore_t_min, bonferroni_t(len(FACTORS)))
+    tested = CFG.tested(FACTORS)
+    t_explore = max(CFG.explore_t_min, bonferroni_t(len(tested)))  # 보정은 실제로 검정하는 개수 기준
     log_path = CFG.state_dir / "confirm_log.json"
     log = json.loads(log_path.read_text()) if log_path.exists() else {}
 
@@ -66,7 +68,8 @@ def run(panel: pd.DataFrame, index_fwd: pd.Series | None = None) -> dict:
     for f, label in FACTORS.items():
         s = excess_series(panel, f, q, hold)
         if len(s) < 20:
-            results.append({"factor": f, "label": label, "status": "자료 부족", "weight": 0.0})
+            results.append({"factor": f, "label": label, "status": "자료 부족" if f in tested else "관찰용(자료 부족)",
+                            "weight": 0.0})
             continue
         split = int(len(s) * CFG.explore_frac)
         exp, conf = s.iloc[:split], s.iloc[split:]
@@ -76,7 +79,9 @@ def run(panel: pd.DataFrame, index_fwd: pd.Series | None = None) -> dict:
             "explore": {"t": te, "mean": me, "n": ne, "from": str(exp.index[0].date()), "to": str(exp.index[-1].date())},
             "confirm": None, "weight": 0.0,
         }
-        if not (te >= t_explore and me > 0):
+        if f not in tested:
+            row["status"] = "관찰용"  # 사전 등록 대상이 아님 — 확인 구간을 보지 않고 가중치도 없음
+        elif not (te >= t_explore and me > 0):
             row["status"] = "탐색 불통과"
         else:
             tc, mc, nc = _tstat(conf["excess"])
@@ -101,6 +106,7 @@ def run(panel: pd.DataFrame, index_fwd: pd.Series | None = None) -> dict:
         "asof": str(date.today()),
         "hold_days": hold, "top_quantile": q, "cost_roundtrip": CFG.cost_roundtrip,
         "t_explore": round(t_explore, 2), "t_confirm": CFG.confirm_t_min,
+        "tested": tested, "universe_mode": CFG.universe_mode, "liq_cut": CFG.liq_cut,
         "factors": results,
         "passed": [r["factor"] for r in results if r.get("status") == "통과"],
     }

@@ -315,6 +315,19 @@ def flow_store() -> dict[str, pd.DataFrame] | None:
     return _FLOW_STORE
 
 
+def flow_universe() -> list[Stock] | None:
+    """서버 PC 가 올린 data/flow/universe.json (flow.db 의 u 표 중 수급이 있는 종목)."""
+    import json
+
+    p = FLOW_FILE.parent / "universe.json"
+    if not p.exists():
+        return None
+    rows = json.loads(p.read_text(encoding="utf-8"))
+    out = [Stock(str(r["code"]).zfill(6), r.get("name", ""), r.get("market", "")) for r in rows]
+    print(f"  유니버스: 수급 파일 전 종목 {len(out)}개", flush=True)
+    return out
+
+
 def load_stock(src, code: str, history: int) -> pd.DataFrame:
     """가격 + 수급을 하나의 일별 표로. 캐시가 있으면 최근분만 받아 덧붙인다."""
     CFG.ensure_dirs()

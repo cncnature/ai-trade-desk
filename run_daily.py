@@ -15,7 +15,7 @@ import pandas as pd
 from desk import ai, notify, score, validate
 from desk.broker import PaperBroker
 from desk.config import CFG
-from desk.data import get_source, load_index, load_stock
+from desk.data import flow_universe, get_source, load_index, load_stock
 from desk.factors import build_panel
 
 
@@ -42,7 +42,11 @@ def main() -> int:
         return 0
 
     src = get_source()
-    uni = src.universe(CFG.top_n_per_market)
+    uni = flow_universe() if CFG.universe_mode == "flow" else None
+    if not uni:
+        if CFG.universe_mode == "flow":
+            print("  flow 유니버스 파일이 없어 시총 상위로 대신합니다.")
+        uni = src.universe(CFG.top_n_per_market)
     names = {s.code: (s.name, s.market) for s in uni}
     frames, failed = {}, []
     for i, s in enumerate(uni, 1):
@@ -70,7 +74,8 @@ def main() -> int:
         "panel_from": str(panel["date"].min().date()), "codes": int(panel["code"].nunique()),
         "flow": int(round(flow_cov / 20)) * 20,  # 소폭 변동에는 반응하지 않게 20 단위
         "hold": CFG.hold_days, "q": CFG.top_quantile, "cost": CFG.cost_roundtrip,
-        "factors": sorted(validate.FACTORS),
+        "factors": sorted(validate.FACTORS), "tested": CFG.tested(validate.FACTORS),
+        "universe": CFG.universe_mode, "liq": CFG.liq_cut,
     }
     vpath = CFG.state_dir / "validation.json"
     old = json.loads(vpath.read_text()) if vpath.exists() else None

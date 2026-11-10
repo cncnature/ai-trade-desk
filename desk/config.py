@@ -22,6 +22,8 @@ class Config:
     # ── 데이터 ─────────────────────────────────────────────
     data_source: str = field(default_factory=lambda: _env("DESK_DATA", "naver"))  # naver | synthetic
     top_n_per_market: int = field(default_factory=lambda: _env("DESK_TOP_N", 100, int))  # 코스피·코스닥 각각 시총 상위 N
+    # top: 시총 상위 N (네이버) | flow: 서버 PC 수급 파일에 있는 전 종목 (거래대금 3억 미만은 이미 제외됨)
+    universe_mode: str = field(default_factory=lambda: _env("DESK_UNIVERSE", "top"))
     history_days: int = field(default_factory=lambda: _env("DESK_HISTORY", 1500, int))
     cache_dir: Path = ROOT / "data" / "cache"
     state_dir: Path = ROOT / "state"
@@ -33,6 +35,9 @@ class Config:
     explore_t_min: float = 2.0           # 탐색 구간 t ≥ 2.0
     confirm_t_min: float = 1.5           # 확인 구간 t ≥ 1.5 이고 평균 > 0
     top_quantile: float = 0.20           # 팩터 상위 20% 바스켓
+    liq_cut: float = field(default_factory=lambda: _env("DESK_LIQ_CUT", 0.2, float))  # 날짜별 거래대금 하위 비율 제외
+    # 사전 등록 검정 대상(쉼표 구분). 비우면 전 팩터를 검정. 대상이 아닌 팩터는 '관찰용'으로 수치만 표시.
+    test_factors: str = field(default_factory=lambda: _env("DESK_FACTORS", ""))
     cost_roundtrip: float = field(default_factory=lambda: _env("DESK_COST", 0.0025, float))  # 수수료+세금 왕복
 
     # ── 리스크 ─────────────────────────────────────────────
@@ -53,6 +58,10 @@ class Config:
     telegram_chat: str = field(default_factory=lambda: _env("TELEGRAM_CHAT_ID", ""))
     ai_provider: str = field(default_factory=lambda: _env("DESK_AI", "off"))  # off | anthropic | ollama
     ai_model: str = field(default_factory=lambda: _env("DESK_AI_MODEL", "claude-haiku-4-5"))
+
+    def tested(self, all_factors) -> list[str]:
+        want = [f.strip() for f in self.test_factors.split(",") if f.strip()]
+        return [f for f in all_factors if f in want] if want else list(all_factors)
 
     def ensure_dirs(self) -> None:
         for d in (self.cache_dir, self.state_dir, self.docs_data_dir):

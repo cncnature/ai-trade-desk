@@ -15,8 +15,9 @@ from .config import CFG
 def latest_snapshot(panel: pd.DataFrame) -> pd.DataFrame:
     last = panel["date"].max()
     snap = panel[panel["date"] == last].copy()
-    liq_cut = snap["value_traded"].quantile(0.2)
-    return snap[snap["value_traded"] >= liq_cut]
+    if CFG.liq_cut <= 0:
+        return snap
+    return snap[snap["value_traded"] >= snap["value_traded"].quantile(CFG.liq_cut)]
 
 
 def rank(snap: pd.DataFrame, validation: dict) -> pd.DataFrame:

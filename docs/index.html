@@ -39,7 +39,7 @@ table{width:100%;border-collapse:collapse;background:var(--panel);border:1px sol
 th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 th{font-weight:600;color:var(--mute);font-size:12px}
 td.r,th.r{text-align:right}
-.st{font-weight:600}.st.pass{color:var(--ok)}.st.fail{color:var(--mute)}.st.warn{color:var(--warn)}
+.st{font-weight:600}.st.pass{color:var(--ok)}.st.fail{color:var(--mute)}.st.obs{color:var(--mute);font-weight:400;font-style:italic}.st.warn{color:var(--warn)}
 .scroll{overflow-x:auto}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:12px}
 .kpi{background:var(--panel);border:1px solid var(--line);padding:12px}.kpi>span{display:block;color:var(--mute);font-size:12px}.kpi b{font-size:20px}
@@ -88,7 +88,7 @@ function spark(cv,arr,color){
   c.strokeStyle=color;c.lineWidth=1.5;c.beginPath();arr.forEach((v,i)=>i?c.lineTo(i*sx,sy(v)):c.moveTo(0,sy(v)));c.stroke();
 }
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const STATUS={'통과':'pass','확인 불통과':'warn'};
+const STATUS={'통과':'pass','확인 불통과':'warn','관찰용':'obs','관찰용(자료 부족)':'obs'};
 
 fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()).then(d=>{
   $('asof').textContent=`기준일 ${d.asof} · 생성 ${d.generated.replace('T',' ').slice(0,16)} · ${d.universe}종목`+(d.flow_coverage!=null?` · 수급 ${d.flow_coverage}종목`:'');
@@ -113,7 +113,7 @@ fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()).then(d=>{
   }
 
   const v=d.validation;
-  $('rule').textContent=`팩터 상위 ${v.top_quantile*100}% 바스켓을 ${v.hold_days}일 보유(왕복 비용 ${(v.cost_roundtrip*100).toFixed(2)}% 차감)했을 때 전체 평균 대비 초과수익. 탐색 t ≥ ${v.t_explore}(다중검정 보정), 확인 t ≥ ${v.t_confirm}.`;
+  $('rule').textContent=`팩터 상위 ${v.top_quantile*100}% 바스켓을 ${v.hold_days}일 보유(왕복 비용 ${(v.cost_roundtrip*100).toFixed(2)}% 차감)했을 때 전체 평균 대비 초과수익. 탐색 t ≥ ${v.t_explore}(다중검정 보정), 확인 t ≥ ${v.t_confirm}.`+(v.tested&&v.tested.length<v.factors.length?` 사전 등록 검정 대상: ${v.tested.join(', ')} — 나머지는 관찰용(가중치 없음).`:'')+(v.universe_mode==='flow'?' 유니버스: 수급 보유 전 종목.':'');
   const f2=x=>x==null?'—':Number(x).toFixed(2);
   $('val').innerHTML='<tr><th>팩터</th><th>판정</th><th class="r">탐색 t</th><th class="r">탐색 초과</th><th class="r">확인 t</th><th class="r">확인 초과</th><th class="r">확인 열람</th><th class="r">지수 대비 t</th><th class="r">가중치</th></tr>'+
     v.factors.map(r=>`<tr><td>${r.label}<div class="meta num">${r.factor}</div></td><td class="st ${STATUS[r.status]||'fail'}">${r.status}</td>

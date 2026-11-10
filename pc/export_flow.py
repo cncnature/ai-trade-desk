@@ -4,12 +4,13 @@ C:\\toss-core\\flow.db 의 inv 표(투자자별 매매)를 읽어 이 저장소�
 푸시되면 GitHub Actions(daily-desk)가 바로 아침 분석을 시작한다.
 
     python pc\\export_flow.py                      # 매일: 새 날짜만 daily 파일로
-    python pc\\export_flow.py --rebuild            # 전체 이력 다시 만들기 (첫 실행·월 1회 자동)
+    python pc\\export_flow.py --rebuild            # 전체 이력 다시 만들기
     python pc\\export_flow.py --dry-run            # 파일만 만들고 푸시 안 함
     python pc\\export_flow.py --db D:\\other\\flow.db
 
 파일 구성 (저장소 크기 증가를 막기 위해 나눔)
-  data/flow/flow.csv.gz            유니버스 종목 전체 이력 (월 1회 재작성)
+  data/flow/universe.json          유니버스 = flow.db 에서 수급이 있는 전 종목
+  data/flow/flow.csv.gz            전 종목 전체 이력 (처음·--rebuild·새 종목 생길 때만 재작성)
   data/flow/daily/YYYY-MM-DD.csv   그 뒤로 매일 추가되는 하루치
 열: date,code,inst_net,frgn_net,frgn_hold_pct   (순매매는 '주' 단위)
 """
@@ -20,7 +21,6 @@ import json
 import sqlite3
 import subprocess
 import sys
-from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -70,11 +70,15 @@ def read_inv(db: Path, codes: set[str] | None, since: str | None) -> pd.DataFram
     return out.sort_values(["date", "code"])
 
 
-def universe_codes() -> set[str] | None:
-    p = REPO / "state" / "universe.json"
-    if not p.exists():
-        return None
-    return {d["code"] for d in json.loads(p.read_text(encoding="utf-8"))}
+def write_universe(db: Path) -> set[str]:
+    """flow.db 에서 수급이 있는 보통주 전체를 유니버스로 기록 (H5 와 같은 모집단)."""
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=30)
+    u = pd.read_sql("SELECT u.symbol, u.name, u.market FROM u WHERE u.symbol IN (SELECT DISTINCT symbol FROM inv)", con)
+    con.close()
+    u["code"] = u["symbol"].astype(str).str[-6:]
+    rows = [{"code": r.code, "name": r.name, "market": r.market} for r in u.itertuples()]
+    (OUT / "universe.json").write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
+    return set(u["code"])
 
 
 def last_exported() -> str | None:
@@ -98,24 +102,26 @@ def main() -> int:
 
     if not a.dry_run:
         git("pull", "--rebase", "-q", "origin", "main")
-    codes = universe_codes()
-    print(f"유니버스 {len(codes) if codes else '전체'}종목 · DB {db}")
     OUT.mkdir(parents=True, exist_ok=True)
     DAILY.mkdir(exist_ok=True)
+    codes = write_universe(db)
+    print(f"유니버스 {len(codes)}종목(수급 보유 전 종목) · DB {db}")
 
     # 월이 바뀌었거나 기본 파일이 없으면 전체 재작성 (새로 편입된 종목의 이력 확보)
-    meta_p = OUT / "meta.json"
-    meta = json.loads(meta_p.read_text(encoding="utf-8")) if meta_p.exists() else {}
-    this_month = date.today().strftime("%Y-%m")
-    rebuild = a.rebuild or not BASE.exists() or meta.get("base_month") != this_month
+    # 기본 파일은 없거나, --rebuild 이거나, 새로 생긴 종목이 있을 때만 다시 쓴다 (저장소 크기 관리)
+    rebuild = a.rebuild or not BASE.exists()
+    if not rebuild:
+        have = set(pd.read_csv(BASE, usecols=["code"], dtype={"code": str})["code"].str.zfill(6))
+        new = codes - have
+        if new:
+            print(f"  새 종목 {len(new)}개 → 기본 파일 재작성")
+            rebuild = True
 
     if rebuild:
         df = read_inv(db, codes, None)
         df.to_csv(BASE, index=False, date_format="%Y-%m-%d", compression="gzip")
         for p in DAILY.glob("*.csv"):
             p.unlink()
-        meta["base_month"] = this_month
-        meta_p.write_text(json.dumps(meta), encoding="utf-8")
         msg = f"flow: 전체 재작성 {df['date'].min().date()}~{df['date'].max().date()} ({df['code'].nunique()}종목)"
     else:
         since = last_exported()
