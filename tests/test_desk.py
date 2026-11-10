@@ -155,3 +155,38 @@ def test_h5_selects_top_hold_and_grades():
     cut = last["frgn_hold"].quantile(0.8)
     assert r["picks"] and all(last.set_index("code").loc[p["code"], "frgn_hold"] >= cut - 1e-9 for p in r["picks"])
     assert r["score"]["days"] >= 15
+
+
+class _FakeSrc:
+    def __init__(self, px):
+        self.px = px
+
+    def ohlcv(self, code, n):
+        return pd.DataFrame({"close": [self.px[code]]}, index=[pd.Timestamp("2026-11-12")])
+
+
+def _ledger_with_two():
+    b = PaperBroker(equity=200_000_000)
+    b.queue([dict(_pick(), code="000001", name="A"), dict(_pick(), code="000002", name="B")])
+    bar = {"open": 100, "high": 101, "low": 99, "close": 100}
+    b.process_day("2026-11-11", {"000001": bar, "000002": bar}, 0.0)
+    b.save()
+    return b
+
+
+def test_manual_commands():
+    import run_manual
+
+    _ledger_with_two()
+    ok, txt = run_manual.run("TARGET 000001 3", _FakeSrc({"000001": 101, "000002": 100}))
+    p = PaperBroker().s["positions"]["000001"]
+    assert ok and abs(p["target"] - 103) < 1e-6 and p["target_src"] == "수동 +3%"
+    ok, txt = run_manual.run("TARGET 000002 3", _FakeSrc({"000001": 101, "000002": 104}))  # 이미 넘었으면 즉시 청산
+    assert ok and "000002" not in PaperBroker().s["positions"]
+    ok, txt = run_manual.run("close 000001", _FakeSrc({"000001": 98, "000002": 0}))
+    b = PaperBroker()
+    assert ok and not b.s["positions"] and b.s["closed"][-1]["reason"] == "수동 손절"
+    ok, _ = run_manual.run("STOP ALL 2", _FakeSrc({}))
+    assert ok and PaperBroker().rules()["stop_pct"] == 2
+    ok, _ = run_manual.run("hello", _FakeSrc({}))
+    assert not ok

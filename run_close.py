@@ -32,6 +32,8 @@ def targets() -> dict[str, float | None]:
     if p.exists():
         for x in json.loads(p.read_text(encoding="utf-8")).get("picks", []):
             out.setdefault(x["code"], x.get("entry_ref"))
+        for c, x in (json.loads(p.read_text(encoding="utf-8")).get("paper") or {}).get("positions", {}).items():
+            out.setdefault(c, x.get("entry"))
         for x in (json.loads(p.read_text(encoding="utf-8")).get("h5") or {}).get("picks", []):
             out.setdefault(x["code"], x.get("close"))
     try:

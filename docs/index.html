@@ -41,6 +41,9 @@ th{font-weight:600;color:var(--mute);font-size:12px}
 td.r,th.r{text-align:right}
 .st{font-weight:600}.st.pass{color:var(--ok)}.st.fail{color:var(--mute)}.st.obs{color:var(--mute);font-weight:400;font-style:italic}.st.warn{color:var(--warn)}
 .scroll{overflow-x:auto}
+.btn{font:600 12px "IBM Plex Sans KR",sans-serif;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:3px 9px;cursor:pointer;margin-left:4px}
+.btn:hover{border-color:var(--ink)}.btn.sell{border-color:var(--up);color:var(--up)}
+.rulebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0 8px;font-size:13px;color:var(--mute)}
 .card .scroll{margin:0 -4px}.card table{font-size:12px}.card th,.card td{padding:6px 5px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:12px}
 .kpi{background:var(--panel);border:1px solid var(--line);padding:12px}.kpi>span{display:block;color:var(--mute);font-size:12px}.kpi b{font-size:20px}
@@ -90,6 +93,8 @@ td.r,th.r{text-align:right}
     <h2>모의 계좌</h2>
     <div class="kpis" id="kpis"></div>
     <canvas id="curve" style="height:120px"></canvas>
+    <div class="rulebar" id="rulebar"></div>
+    <div class="scroll"><table id="holds"></table></div>
     <div class="scroll" style="margin-top:12px"><table id="trades"></table></div>
   </section>
 
@@ -157,6 +162,7 @@ Promise.all([fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()),Qp])
   $('kpis').innerHTML=[['평가 자산',fmt(P.equity)+'원'],['누적 수익',`<span class="${cls(P.total_ret_pct)}">${pct(P.total_ret_pct)}</span>`],['청산 건수',P.trades],['승률',P.win_rate==null?'—':P.win_rate+'%'],['평균 수익',pct(P.avg_ret_pct)],['보유/대기',Object.keys(P.positions).length+' / '+P.pending.length]]
     .map(([k,x])=>`<div class="kpi"><span>${k}</span><b class="num">${x}</b></div>`).join('');
   if(P.curve.length>1)spark($('curve'),P.curve.map(c=>c.equity),css('--ink'));else $('curve').style.display='none';
+  renderHolds(P);
   $('trades').innerHTML='<tr><th>종목</th><th>진입</th><th>청산</th><th class="r">진입가</th><th class="r">청산가</th><th class="r">수익</th><th>사유</th></tr>'+
     (P.recent.length?P.recent.map(t=>`<tr><td>${t.name}</td><td class="num">${t.entry_date}</td><td class="num">${t.exit_date}</td><td class="r num">${fmt(t.entry)}</td><td class="r num">${fmt(t.exit)}</td><td class="r num ${cls(t.ret_pct)}">${pct(t.ret_pct)}</td><td>${t.reason}</td></tr>`).join('')
     :'<tr><td colspan="7" class="meta">아직 청산된 거래가 없습니다.</td></tr>');
@@ -172,6 +178,37 @@ Promise.all([fetch('data/v9_morning.json',{cache:'no-store'}).then(r=>r.json()),
     <div class="meta num">채점 ${oc.days||0}일 (${oc.picks||0}건)${few?' · 표본 부족':''}<br>
     갭 ${P(st.gap.mean)} · 시가→종가 ${P(oc.mean)}${oc.t!=null?` (t ${oc.t.toFixed(2)})`:''} · 시가 후 최고 ${P(st.omax.mean)} / 최저 ${P(st.omin.mean)} · D+3 ${P(st.d3.mean)} · 시가→종가 플러스 ${st.win_oc==null?'—':Math.round(st.win_oc*100)+'%'}</div></div>`;}).join('')+h5card(L.h5);
 }).catch(()=>{$('v9m').innerHTML='<div class="empty">아직 업로드된 아침 후보가 없습니다 (서버 PC 07:45 업로드).</div>';});
+
+// ── 보유 종목 버튼: GitHub 새 이슈(제목=명령)를 열고, 저장소 주인이 제출하면 manual 워크플로가 장부를 고친다 ──
+const REPO=(()=>{const o=location.hostname.split('.')[0],r=location.pathname.split('/').filter(Boolean)[0];
+  return location.hostname.endsWith('github.io')&&r?`${o}/${r}`:'cncnature/ai-trade-desk';})();
+function cmd(title,note){
+  const body=`${note}\n\n이 이슈를 [Submit new issue] 로 제출하면 1~2분 안에 모의 장부에 반영되고 이 이슈는 자동으로 닫힙니다.\n(저장소 주인이 연 이슈만 처리 · 실계좌 주문 없음)`;
+  window.open(`https://github.com/${REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`,'_blank');
+}
+function askPct(kind,code,name){
+  const k=kind==='TARGET'?'목표':'손절', def=kind==='TARGET'?'3':'2';
+  const v=prompt(`${name} ${k} % (매수가 대비, 숫자만)`,def); if(v===null)return;
+  const n=parseFloat(v); if(!(n>0)){alert('0보다 큰 숫자를 넣어 주세요');return;}
+  cmd(`${kind} ${code} ${n}`,`${name} ${k==='목표'?'목표를':'손절을'} 매수가 대비 ${kind==='TARGET'?'+':'-'}${n}% 로 설정`);
+}
+function renderHolds(P){
+  const r=P.rules||{}, pos=Object.entries(P.positions||{});
+  $('rulebar').innerHTML=`<span>목표·손절 기본값: 목표 ${r.target_pct!=null?'+'+r.target_pct+'%':'ATR×3'} · 손절 ${r.stop_pct!=null?'-'+Math.abs(r.stop_pct)+'%':'ATR×2'}</span>
+    <button class="btn" onclick="askPct('TARGET','ALL','전체(보유+앞으로 살 종목)')">전체 목표 %</button>
+    <button class="btn" onclick="askPct('STOP','ALL','전체(보유+앞으로 살 종목)')">전체 손절 %</button>
+    <button class="btn" onclick="cmd('RESET ALL','목표·손절을 ATR 기본값으로 되돌림')">기본값 복원</button>
+    ${pos.length?`<button class="btn sell" onclick="if(confirm('보유 ${pos.length}종목을 모두 지금 가격에 청산할까요?'))cmd('CLOSE ALL','보유 종목 전체 청산')">전체 청산</button>`:''}`;
+  $('holds').innerHTML='<tr><th>보유 종목</th><th>매수일</th><th class="r">수량</th><th class="r">매수가</th><th class="r">현재가</th><th class="r">수익</th><th class="r">목표</th><th class="r">손절</th><th class="r">보유일</th><th></th></tr>'+
+    (pos.length?pos.map(([c,p0])=>{const p={...p0,name:String(p0.name).replace(/['"\\]/g,'')}, q=qv(c), now=q?q.close:(p.last||p.entry), ret=(now/p.entry-1)*100;
+      return `<tr><td>${p.name}<span class="meta num"> ${c}</span></td><td class="num">${p.entry_date}</td><td class="r num">${fmt(p.qty)}</td><td class="r num">${fmt(Math.round(p.entry))}</td>
+      <td class="r num">${fmt(Math.round(now))}</td><td class="r num ${cls(ret)}">${pct(ret)}</td>
+      <td class="r num">${fmt(Math.round(p.target))}${p.target_src?`<div class="meta">${p.target_src}</div>`:''}</td>
+      <td class="r num">${fmt(Math.round(p.stop))}${p.stop_src?`<div class="meta">${p.stop_src}</div>`:''}</td>
+      <td class="r num">${p.days}/${p.hold_days}</td>
+      <td style="white-space:nowrap"><button class="btn" onclick="askPct('TARGET','${c}','${p.name}')">목표 %</button><button class="btn" onclick="askPct('STOP','${c}','${p.name}')">손절 %</button><button class="btn sell" onclick="if(confirm('${p.name} 을(를) 지금 가격에 청산할까요?'))cmd('CLOSE ${c}','${p.name} 지금 가격으로 청산')">청산</button></td></tr>`;}).join('')
+     :`<tr><td colspan="10" class="meta">보유 종목 없음${P.pending.length?` · 내일 시가 매수 대기 ${P.pending.length}종목 (${P.pending.slice(0,6).map(x=>x.name).join(', ')}${P.pending.length>6?' 외':''})`:''}</td></tr>`);
+}
 
 // ⑥ H5-v1 — 이 시스템이 직접 계산 (v9 아침 리포트와 같은 선정), 매일 기록해 10거래일 뒤 자체 채점
 function h5card(h){

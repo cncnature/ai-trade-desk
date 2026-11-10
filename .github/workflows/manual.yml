@@ -1,0 +1,54 @@
+name: manual
+
+# 대시보드의 [청산]·[목표 %]·[손절 %] 버튼이 여는 이슈를 처리한다.
+# 저장소 주인이 연 이슈만 실행 — 공개 저장소라도 다른 사람은 장부를 바꿀 수 없다.
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: daily-desk          # 아침 분석과 같은 줄에 세워 장부를 동시에 쓰지 않게
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.event.issue.user.login == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: 명령 실행
+        id: run
+        env:
+          TITLE: ${{ github.event.issue.title }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python run_manual.py "$TITLE"
+        continue-on-error: true
+      - name: 장부 커밋
+        if: steps.run.outcome == 'success'
+        run: |
+          git config user.name "desk-bot"
+          git config user.email "desk-bot@users.noreply.github.com"
+          git add state/paper_ledger.json docs/data/latest.json
+          git diff --cached --quiet && exit 0
+          git commit -m "manual: ${{ github.event.issue.title }}"
+          git pull --rebase -q origin main
+          git push
+      - name: 결과 답글 후 이슈 닫기
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f manual_result.md ] || echo "실행 실패 — Actions 로그를 확인하세요." > manual_result.md
+          gh issue comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body-file manual_result.md
+          gh issue close ${{ github.event.issue.number }} --repo ${{ github.repository }}
