@@ -114,9 +114,10 @@ const $=id=>document.getElementById(id);
 // 장 마감 뒤(평일 16:00) 저장되는 오늘 시세 — 없으면 빈 칸
 let Q={quotes:{}};
 const Qp=fetch('data/close.json',{cache:'no-store'}).then(r=>r.json()).then(x=>{Q=x;return x;}).catch(()=>Q);
-const qv=c=>Q.quotes[c];
-const qClose=c=>{const q=qv(c);return q?fmt(q.close):'—';};
-const qChg=c=>{const q=qv(c);return q?`<span class="${cls(q.chg_pct)}">${pct(q.chg_pct)}</span>`:'—';};
+// since: 이 날짜 이후의 시세만 (어제 종가를 오늘 목록의 결과처럼 보이지 않게)
+const qv=(c,since)=>{const q=Q.quotes[c];return q&&(!since||q.date>=since)?q:null;};
+const qClose=(c,since)=>{const q=qv(c,since);return q?fmt(q.close):'—';};
+const qChg=(c,since)=>{const q=qv(c,since);return q?`<span class="${cls(q.chg_pct)}">${pct(q.chg_pct)}</span>`:'—';};
 const fmt=n=>n==null?'—':Number(n).toLocaleString('ko-KR');
 const pct=(n,d=2)=>n==null?'—':(n>0?'+':'')+Number(n).toFixed(d)+'%';
 const cls=n=>n>0?'up':n<0?'down':'';
@@ -183,7 +184,7 @@ Promise.all([fetch('data/v9_morning.json',{cache:'no-store'}).then(r=>r.json()),
   $('v9m').innerHTML=m.sections.map(s=>{const st=s.stats, oc=st.oc;
     const few=(oc.days||0)<20;
     return `<div class="card"><div class="top"><div><div class="nm">${s.label}</div><div class="cd">${s.origin}${s.threshold!=null?` · 점수 ${s.threshold}↑`:' · 전부'}</div></div><div class="score">${s.today.length}</div></div>
-    ${s.today.length?`<div class="scroll"><table style="border:0"><tr><th>종목</th><th class="r">점수</th><th class="r">기준가</th><th class="r">종가</th><th class="r">등락률</th></tr>${s.today.map(x=>`<tr><td>${x.name}<span class="meta num"> ${x.code}</span></td><td class="r num">${x.score??'—'}</td><td class="r num">${fmt(x.ref)}</td><td class="r num">${qClose(x.code)}</td><td class="r num">${qChg(x.code)}</td></tr>`).join('')}</table></div>`:'<div class="meta">문턱을 넘은 후보 없음</div>'}
+    ${s.today.length?`<div class="scroll"><table style="border:0"><tr><th>종목</th><th class="r">점수</th><th class="r">기준가</th><th class="r">종가</th><th class="r">등락률</th></tr>${s.today.map(x=>`<tr><td>${x.name}<span class="meta num"> ${x.code}</span></td><td class="r num">${x.score??'—'}</td><td class="r num">${fmt(x.ref)}</td><td class="r num">${qClose(x.code,m.day)}</td><td class="r num">${qChg(x.code,m.day)}</td></tr>`).join('')}</table></div>`:'<div class="meta">문턱을 넘은 후보 없음</div>'}
     <div class="meta num">채점 ${oc.days||0}일 (${oc.picks||0}건)${few?' · 표본 부족':''}<br>
     갭 ${P(st.gap.mean)} · 시가→종가 ${P(oc.mean)}${oc.t!=null?` (t ${oc.t.toFixed(2)})`:''} · 시가 후 최고 ${P(st.omax.mean)} / 최저 ${P(st.omin.mean)} · D+3 ${P(st.d3.mean)} · 시가→종가 플러스 ${st.win_oc==null?'—':Math.round(st.win_oc*100)+'%'}</div></div>`;}).join('')+h5card(L.h5);
 }).catch(()=>{$('v9m').innerHTML='<div class="empty">아직 업로드된 아침 후보가 없습니다 (서버 PC 07:45 업로드).</div>';});

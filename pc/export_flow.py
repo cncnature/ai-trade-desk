@@ -67,6 +67,8 @@ def read_inv(db: Path, codes: set[str] | None, since: str | None) -> pd.DataFram
             m[col] = m[col] / m["c"]
     print(f"  순매매 단위: {'금액→주 환산' if is_amount else '주'} (중앙값 |외국인|/거래량 = {ratio:.3g})")
     out = m.rename(columns={"inst": "inst_net", "frg": "frgn_net", "hold": "frgn_hold_pct"})[COLS]
+    if out["frgn_hold_pct"].dropna().quantile(0.99) <= 1.0:  # 0~1 비율로 저장된 경우 → %
+        out["frgn_hold_pct"] = out["frgn_hold_pct"] * 100
     return out.sort_values(["date", "code"])
 
 

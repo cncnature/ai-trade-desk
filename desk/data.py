@@ -308,6 +308,10 @@ def flow_store() -> dict[str, pd.DataFrame] | None:
     for p in sorted((FLOW_FILE.parent / "daily").glob("*.csv")):  # 기본 파일 이후 매일 추가분
         parts.append(pd.read_csv(p, dtype={"code": str}, parse_dates=["date"]))
     df = pd.concat(parts, ignore_index=True)
+    # flow.db 는 외국인 보유율을 0~1 비율로 저장한다 → % 로 맞춤 (화면 표시·변화량 단위)
+    hp = df["frgn_hold_pct"].dropna()
+    if len(hp) and hp.quantile(0.99) <= 1.0:
+        df["frgn_hold_pct"] = df["frgn_hold_pct"] * 100
     df["code"] = df["code"].str.zfill(6)
     _FLOW_STORE = {c: g.drop(columns="code").drop_duplicates("date").set_index("date").sort_index()
                    for c, g in df.groupby("code")}
