@@ -16,6 +16,7 @@ header{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px 24px;border-bot
 h1{font-size:22px;margin:0;letter-spacing:-.02em}
 .meta{color:var(--mute);font-size:13px}
 .badge{font:500 11px "IBM Plex Mono",monospace;border:1px solid var(--line);padding:2px 8px;border-radius:99px;color:var(--mute)}
+.badge.on{color:var(--ok);border-color:var(--ok)}
 .badge.syn{color:var(--warn);border-color:var(--warn)}
 .num{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
 .up{color:var(--up)}.down{color:var(--down)}
@@ -60,6 +61,7 @@ details summary{cursor:pointer;color:var(--mute);font-size:12px}
     <h1>AI Trade Desk</h1>
     <span class="meta" id="asof">불러오는 중…</span>
     <span class="badge" id="src"></span>
+    <span class="badge" id="live">시세 연결 중…</span>
   </header>
   <div class="strip" id="market"></div>
 
@@ -131,8 +133,8 @@ const evSum=(list,day)=>{const L=EV.day===day?EV.lists[list]:null,t=L&&L.today;
           :`오늘 결과는 장 마감 뒤 20:15 채점 (시가 매수 가정 · '맞음' = 시가→종가 플러스)`;};
 // since: 이 날짜 이후의 시세만 (어제 종가를 오늘 목록의 결과처럼 보이지 않게)
 const qv=(c,since)=>{const q=Q.quotes[c];return q&&(!since||q.date>=since)?q:null;};
-const qClose=(c,since)=>{const q=qv(c,since);return q?fmt(q.close):'—';};
-const qChg=(c,since)=>{const q=qv(c,since);return q?`<span class="${cls(q.chg_pct)}">${pct(q.chg_pct)}</span>`:'—';};
+const qClose=(c,since)=>{const q=qv(c,since);return `<span class="lv" data-code="${c}" data-k="px">${q?fmt(q.close):'—'}</span>`;};
+const qChg=(c,since)=>{const q=qv(c,since);return `<span class="lv ${q?cls(q.chg_pct):''}" data-code="${c}" data-k="chg">${q?pct(q.chg_pct):'—'}</span>`;};
 const fmt=n=>n==null?'—':Number(n).toLocaleString('ko-KR');
 const pct=(n,d=2)=>n==null?'—':(n>0?'+':'')+Number(n).toFixed(d)+'%';
 const cls=n=>n>0?'up':n<0?'down':'';
@@ -162,7 +164,7 @@ Promise.all([fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()),Qp,E
       <div class="top"><div><div class="nm">${p.name}</div><div class="cd num">${p.code} · ${p.market}</div></div><div class="score">${p.score_pct}</div></div>
       <canvas id="sp${i}"></canvas>
       <div class="plan num"><div><span>기준가</span>${fmt(p.entry_ref)}</div><div><span>손절</span>${fmt(p.stop)}</div><div><span>목표</span>${fmt(p.target)}</div><div><span>수량</span>${p.qty}주</div></div>
-      <div class="meta num">${tday} 결과: ${qv(p.code,tday)?`종가 ${qClose(p.code,tday)} · 전일 대비 ${qChg(p.code,tday)} · `:''}${evMark('desk',p.code,tday)}</div>
+      <div class="meta num">현재가 ${qClose(p.code,tday)} · 전일 대비 ${qChg(p.code,tday)} · ${tday} 판정 ${evMark('desk',p.code,tday)}</div>
       <div class="votes">${p.votes.map(v=>`<i>${v}</i>`).join('')}</div>
       ${p.event?`<div class="note">배당 ${fmt(p.event.dps)}원 (${p.event.yield_pct}%) · 마지막 매수일 ${p.event.last_buy} · 배당락 ${p.event.ex_date} — 마지막 매수일 종가에 매도</div>`:''}
       ${p.ai_note?`<div class="note">${p.ai_note}</div>`:''}
@@ -201,7 +203,7 @@ Promise.all([fetch('data/v9_morning.json',{cache:'no-store'}).then(r=>r.json()),
   $('v9m').innerHTML=m.sections.map(s=>{const st=s.stats, oc=st.oc;
     const few=(oc.days||0)<20;
     return `<div class="card"><div class="top"><div><div class="nm">${s.label}</div><div class="cd">${s.origin}${s.threshold!=null?` · 점수 ${s.threshold}↑`:' · 전부'}</div></div><div class="score">${s.today.length}</div></div>
-    ${s.today.length?`<div class="scroll"><table style="border:0"><tr><th>종목</th><th class="r">점수</th><th class="r">기준가</th><th class="r">종가</th><th class="r">등락률</th><th class="r">판정</th></tr>${s.today.map(x=>`<tr><td>${x.name}<span class="meta num"> ${x.code}</span></td><td class="r num">${x.score??'—'}</td><td class="r num">${fmt(x.ref)}</td><td class="r num">${qClose(x.code,m.day)}</td><td class="r num">${qChg(x.code,m.day)}</td><td class="r num">${evMark('v9_'+s.key,x.code,m.day)}</td></tr>`).join('')}</table></div>`:'<div class="meta">문턱을 넘은 후보 없음</div>'}
+    ${s.today.length?`<div class="scroll"><table style="border:0"><tr><th>종목</th><th class="r">점수</th><th class="r">기준가</th><th class="r">현재가</th><th class="r">등락률</th><th class="r">판정</th></tr>${s.today.map(x=>`<tr><td>${x.name}<span class="meta num"> ${x.code}</span></td><td class="r num">${x.score??'—'}</td><td class="r num">${fmt(x.ref)}</td><td class="r num">${qClose(x.code,m.day)}</td><td class="r num">${qChg(x.code,m.day)}</td><td class="r num">${evMark('v9_'+s.key,x.code,m.day)}</td></tr>`).join('')}</table></div>`:'<div class="meta">문턱을 넘은 후보 없음</div>'}
     <div class="meta num"><b>${evSum('v9_'+s.key,m.day)}</b><br>채점 ${oc.days||0}일 (${oc.picks||0}건)${few?' · 표본 부족':''}<br>
     갭 ${P(st.gap.mean)} · 시가→종가 ${P(oc.mean)}${oc.t!=null?` (t ${oc.t.toFixed(2)})`:''} · 시가 후 최고 ${P(st.omax.mean)} / 최저 ${P(st.omin.mean)} · D+3 ${P(st.d3.mean)} · 시가→종가 플러스 ${st.win_oc==null?'—':Math.round(st.win_oc*100)+'%'}</div></div>`;}).join('')+h5card(L.h5?{...L.h5,trade_day:String(L.generated||'').slice(0,10)}:L.h5);
 }).catch(()=>{$('v9m').innerHTML='<div class="empty">아직 업로드된 아침 후보가 없습니다 (서버 PC 07:45 업로드).</div>';});
@@ -243,7 +245,7 @@ function renderHolds(P){
   $('holds').innerHTML='<tr><th>보유 종목</th><th>매수일</th><th class="r">수량</th><th class="r">매수가</th><th class="r">현재가</th><th class="r">수익</th><th class="r">목표</th><th class="r">손절</th><th class="r">보유일</th><th></th></tr>'+
     (pos.length?pos.map(([c,p0])=>{const p={...p0,name:String(p0.name).replace(/['"\\]/g,'')}, q=qv(c), now=q?q.close:(p.last||p.entry), ret=(now/p.entry-1)*100;
       return `<tr><td>${p.name}<span class="meta num"> ${c}</span></td><td class="num">${p.entry_date}</td><td class="r num">${fmt(p.qty)}</td><td class="r num">${fmt(Math.round(p.entry))}</td>
-      <td class="r num">${fmt(Math.round(now))}</td><td class="r num ${cls(ret)}">${pct(ret)}</td>
+      <td class="r num"><span class="lv" data-code="${c}" data-k="px">${fmt(Math.round(now))}</span></td><td class="r num"><span class="lv ${cls(ret)}" data-code="${c}" data-k="ret" data-entry="${p.entry}">${pct(ret)}</span></td>
       <td class="r num">${fmt(Math.round(p.target))}${p.target_src?`<div class="meta">${p.target_src}</div>`:''}</td>
       <td class="r num">${fmt(Math.round(p.stop))}${p.stop_src?`<div class="meta">${p.stop_src}</div>`:''}</td>
       <td class="r num">${p.days}/${p.hold_days}</td>
@@ -258,7 +260,7 @@ function h5card(h){
   const P=x=>x==null?'—':pct(x*100), T=x=>x==null?'':` (t ${x.toFixed(2)})`, e=h.evidence, sc=h.score;
   return `<div class="card" style="border-color:var(--ok)"><div class="top"><div><div class="nm">⑥ H5-v1 외국인 보유율 상위 20%</div>
     <div class="cd">v9 검증 통과 · 종목군 ${h.n_group}종 중 거래대금 순 · ${h.asof} 기준</div></div><div class="score">${h.picks.length}</div></div>
-    <div class="scroll"><table style="border:0"><tr><th>종목</th><th class="r">외국인</th><th class="r">기준가</th><th class="r">종가</th><th class="r">등락률</th><th class="r">판정</th></tr>
+    <div class="scroll"><table style="border:0"><tr><th>종목</th><th class="r">외국인</th><th class="r">기준가</th><th class="r">현재가</th><th class="r">등락률</th><th class="r">판정</th></tr>
     ${h.picks.map(x=>`<tr><td>${x.name}<span class="meta num"> ${x.code}</span></td><td class="r num">${x.hold}%</td><td class="r num">${fmt(x.close)}</td><td class="r num">${qClose(x.code,tday)}</td><td class="r num">${qChg(x.code,tday)}</td><td class="r num">${evMark('h5',x.code,tday)}</td></tr>`).join('')}</table></div>
     <div class="meta num"><b>${evSum('h5',tday)}</b><br>10일 보유 규칙이라 하루 결과는 참고 — 판정은 아래 자체 채점(10거래일 뒤)<br>v9 검증: 탐색 전 종목 대비 10일 ${P(e.explore.excess)}${T(e.explore.t)} · 확인 ${P(e.confirm.excess)}${T(e.confirm.t)}<br>
     한계: 코스피 대비 ${P(e.vs_kospi.excess)}${T(e.vs_kospi.t)} — 지수 대신이 아니라 개별주를 산다면 이 안에서<br>
@@ -277,7 +279,7 @@ Promise.all([fetch('/kr-dividend-calendar/data.json',{cache:'no-store'}).then(r=
   $('divnote').innerHTML=`배당 캘린더(<a href="/kr-dividend-calendar/" style="color:inherit">cncnature.github.io/kr-dividend-calendar</a>, ${String(c.generated_at||'').slice(0,16).replace('T',' ')} 갱신)의 일정을 그대로 보여 줍니다. `+
     `‘D-3 진입’은 배당 D-3 규칙(배당락 3거래일 전 시가 → 마지막 매수일 종가)의 날짜일 뿐, 이 규칙은 아직 검증 전이라 매매하지 않습니다. ‘예상’은 공시 전 추정 날짜입니다.`;
   const last=e=>(e.ref_dividends||[])[0];
-  $('divup').innerHTML='<tr><th>종목</th><th>구분</th><th>상태</th><th>D-3 진입(참고)</th><th>마지막 매수일</th><th>배당락일</th><th class="r">배당금</th><th class="r">종가</th><th class="r">등락률</th></tr>'+
+  $('divup').innerHTML='<tr><th>종목</th><th>구분</th><th>상태</th><th>D-3 진입(참고)</th><th>마지막 매수일</th><th>배당락일</th><th class="r">배당금</th><th class="r">현재가</th><th class="r">등락률</th></tr>'+
     (rows.length?rows.map(e=>`<tr><td>${e.name}<span class="meta num"> ${e.code}</span></td><td>${e.period||''}</td>
       <td class="st ${e.status==='확정'?'pass':'obs'}">${e.status}</td><td class="num">${back(e.ex_date,3)}</td>
       <td class="num">${e.last_buy_date}</td><td class="num">${e.ex_date}</td>
@@ -291,6 +293,47 @@ fetch('data/v9_record.json',{cache:'no-store'}).then(r=>r.json()).then(v=>{
   $('v9').innerHTML='<tr><th>전략</th><th>규칙</th><th>실측 결과</th><th>판정</th><th>기준일</th></tr>'+
     v.items.map(x=>`<tr><td><b>${x.name}</b></td><td style="white-space:normal;min-width:180px">${x.rule}</td><td style="white-space:normal;min-width:320px">${x.result}</td><td class="st ${x.verdict==='불통과'?'fail':'obs'}">${x.verdict}</td><td class="num">${x.asof}</td></tr>`).join('');
 }).catch(()=>{});
+
+// ── 실시간 시세 (네이버 polling, JSONP) ──
+// 08:00~20:10 KST: 10초마다 갱신 — 정규장(09:00~15:30)은 KRX 현재가, 그 밖은 NXT 프리·애프터마켓 가격
+// 그 밖 시간·휴장일: 페이지를 열 때 한 번 받아 종가(정규장)를 보여 준다. 판정(✅/❌)은 바뀌지 않는다 — 20:15 채점 기준.
+const LIVE={q:{},at:null,session:''};
+function jsonp(url){return new Promise(res=>{const n='nv'+Math.random().toString(36).slice(2);
+  const s=document.createElement('script'),done=d=>{delete window[n];s.remove();res(d);};
+  window[n]=done;s.onerror=()=>done(null);s.src=url+'&_callback=window.'+n;document.head.appendChild(s);setTimeout(()=>window[n]&&done(null),8000);});}
+const num=x=>x==null?null:Number(String(x).replace(/,/g,''));
+function kstHM(){const d=new Date(Date.now()+9*3600e3);return d.toISOString().slice(11,16);}
+async function liveTick(){
+  const codes=[...new Set([...document.querySelectorAll('.lv[data-code]')].map(e=>e.dataset.code))].filter(c=>/^\d{6}$/.test(c));
+  if(!codes.length) return;
+  for(let i=0;i<codes.length;i+=40){
+    const q=codes.slice(i,i+40).map(c=>'SERVICE_ITEM:'+c).join('|');
+    const d=await jsonp('https://polling.finance.naver.com/api/realtime?query='+encodeURIComponent(q));
+    const rows=d&&d.result&&d.result.areas&&d.result.areas[0]?d.result.areas[0].datas:[];
+    for(const r of rows){
+      const nx=r.nxtOverMarketPriceInfo, nxOpen=nx&&nx.overMarketStatus==='OPEN'&&nx.overPrice;
+      let px=r.nv, chg=r.cr, ses='정규장';
+      if(r.ms!=='OPEN'&&nxOpen){px=num(nx.overPrice);chg=num(nx.fluctuationsRatio);ses=nx.tradingSessionType==='PRE_MARKET'?'NXT 프리마켓':'NXT 애프터마켓';}
+      else if(r.ms!=='OPEN'){ses='종가';}
+      LIVE.q[r.cd]={px,chg,ses};LIVE.session=ses;
+    }
+  }
+  LIVE.at=new Date();
+  for(const e of document.querySelectorAll('.lv[data-code]')){
+    const v=LIVE.q[e.dataset.code]; if(!v||v.px==null) continue;
+    if(e.dataset.k==='px'){e.textContent=fmt(v.px);e.title=v.ses;}
+    else if(e.dataset.k==='chg'){e.textContent=pct(v.chg);e.className='lv '+cls(v.chg);e.title=v.ses+' · 전일 종가 대비';}
+    else if(e.dataset.k==='ret'){const r=(v.px/Number(e.dataset.entry)-1)*100;e.textContent=pct(r);e.className='lv '+cls(r);}
+  }
+  const b=$('live'), t=LIVE.at.toTimeString().slice(0,8), on=kstHM()>='08:00'&&kstHM()<'20:10';
+  b.textContent=on?`실시간 ${LIVE.session} · ${t}`:`종가 기준 · ${t} 조회`; b.classList.toggle('on',on);
+}
+async function liveLoop(){
+  try{await liveTick();}catch(e){$('live').textContent='시세 연결 실패 — 저장된 값 표시';}
+  const hm=kstHM(), wd=new Date(Date.now()+9*3600e3).getUTCDay();
+  if(wd>0&&wd<6&&hm>='07:59'&&hm<'20:10') setTimeout(liveLoop,10000);
+}
+setTimeout(liveLoop,1500);  // 각 칸이 그려진 뒤 시작
 </script>
 </body>
 </html>
