@@ -190,3 +190,38 @@ def test_manual_commands():
     assert ok and PaperBroker().rules()["stop_pct"] == 2
     ok, _ = run_manual.run("hello", _FakeSrc({}))
     assert not ok
+
+
+def test_evening_eval(monkeypatch, tmp_path):
+    import json as _json
+
+    import run_eval
+
+    monkeypatch.setattr(run_eval, "ROWS", CFG.state_dir / "eval_rows.json")
+    monkeypatch.setattr(run_eval, "OUT", CFG.docs_data_dir / "eval.json")
+    CFG.ensure_dirs()
+    (CFG.docs_data_dir / "v9_morning.json").write_text(_json.dumps({"day": "2026-11-11", "sections": [
+        {"key": "open", "label": "① 시초가", "today": [{"code": "000001", "name": "A"}, {"code": "000002", "name": "B"}]}]}))
+    bars = {"KOSPI": (100, 101, 99, 100.5, 100), "KOSDAQ": (50, 51, 49, 50, 50),
+            "000001": (1030, 1070, 1000, 1010, 1000),   # 갭 +3%, 장중 +3.9%, 종가는 시가 아래
+            "000002": (1000, 1010, 970, 1005, 1000)}
+
+    class Src:
+        def ohlcv(self, code, n):
+            o, h, l, c, pc = bars[code]
+            return pd.DataFrame({"open": [pc, o], "high": [pc, h], "low": [pc, l], "close": [pc, c]},
+                                index=pd.to_datetime(["2026-11-10", "2026-11-11"]))
+
+    assert run_eval.main(Src(), pd.Timestamp("2026-11-11 20:15", tz="Asia/Seoul")) == 0
+    e = _json.loads((CFG.docs_data_dir / "eval.json").read_text())
+    L = e["lists"][0]
+    assert L["today"]["n"] == 2 and L["cum"]["days"] == 1 and "판단 보류" in L["verdict"]
+    a = L["items"][0]
+    assert abs(a["oc"] - (1010 / 1030 - 1)) < 1e-9 and not a["hit"]
+    rows = _json.loads((CFG.state_dir / "eval_rows.json").read_text())
+    r1 = next(r for r in rows if r["code"] == "000001")
+    assert abs(r1["t3"] - (0.03 - CFG.cost_roundtrip)) < 1e-9   # +3% 익절 시뮬
+    assert any("갭 +3%" in x for x in e["advice"])
+    # 같은 날 다시 돌면 덮어씀
+    run_eval.main(Src(), pd.Timestamp("2026-11-11 20:30", tz="Asia/Seoul"))
+    assert len(_json.loads((CFG.state_dir / "eval_rows.json").read_text())) == 2

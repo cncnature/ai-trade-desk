@@ -41,3 +41,28 @@ def explain(pick: dict, validation: dict) -> str | None:
     except Exception as e:  # 설명 실패는 매매에 영향 없음
         return f"(AI 설명 실패: {type(e).__name__})"
     return None
+
+
+def comment(facts: dict) -> str | None:
+    """저녁 평가 요약 한 문단 (선택). 주어진 숫자 밖의 주장·매수 권유 금지."""
+    if CFG.ai_provider == "off":
+        return None
+    try:
+        import requests
+
+        prompt = json.dumps(facts, ensure_ascii=False, default=str)
+        if CFG.ai_provider == "anthropic":
+            r = requests.post("https://api.anthropic.com/v1/messages", timeout=30, headers={
+                "x-api-key": os.environ["ANTHROPIC_API_KEY"], "anthropic-version": "2023-06-01",
+                "content-type": "application/json"},
+                json={"model": CFG.ai_model, "max_tokens": 300, "system": SYSTEM,
+                      "messages": [{"role": "user", "content": prompt}]})
+            return r.json()["content"][0]["text"].strip()
+        if CFG.ai_provider == "ollama":
+            url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+            r = requests.post(f"{url}/api/generate", timeout=60,
+                              json={"model": CFG.ai_model, "system": SYSTEM, "prompt": prompt, "stream": False})
+            return r.json().get("response", "").strip()
+    except Exception as e:
+        return f"(AI 설명 실패: {type(e).__name__})"
+    return None

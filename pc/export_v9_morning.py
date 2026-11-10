@@ -106,6 +106,11 @@ def main() -> int:
     if not a.dry_run:
         git("pull", "--rebase", "-q", "origin", "main")
     data = build(db)
+    if OUT.exists():
+        old = json.loads(OUT.read_text(encoding="utf-8"))
+        if old.get("day") == data["day"] and old.get("sections") == data["sections"]:
+            print(f"v9 아침 후보 {data['day']} — 바뀐 것 없음")
+            return 0
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
     n = sum(len(s["today"]) for s in data["sections"])

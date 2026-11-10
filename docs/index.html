@@ -41,6 +41,8 @@ th{font-weight:600;color:var(--mute);font-size:12px}
 td.r,th.r{text-align:right}
 .st{font-weight:600}.st.pass{color:var(--ok)}.st.fail{color:var(--mute)}.st.obs{color:var(--mute);font-weight:400;font-style:italic}.st.warn{color:var(--warn)}
 .scroll{overflow-x:auto}
+.advice{margin:0 0 12px;padding-left:18px;font-size:14px}.advice li{margin:4px 0}
+details summary{cursor:pointer;color:var(--mute);font-size:12px}
 .btn{font:600 12px "IBM Plex Sans KR",sans-serif;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:3px 9px;cursor:pointer;margin-left:4px}
 .btn:hover{border-color:var(--ink)}.btn.sell{border-color:var(--up);color:var(--up)}
 .rulebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0 8px;font-size:13px;color:var(--mute)}
@@ -61,8 +63,15 @@ td.r,th.r{text-align:right}
   <div class="strip" id="market"></div>
 
   <section>
-    <h2>오늘의 후보 · 내일 시가 진입</h2>
+    <h2>오늘의 후보 · 다음 장 시가 진입</h2>
     <div id="picks"></div>
+  </section>
+
+  <section>
+    <h2>오늘 추천 평가 · 조언</h2>
+    <p class="rule" id="evnote"></p>
+    <ul class="advice" id="evadv"></ul>
+    <div class="scroll"><table id="evtab"></table></div>
   </section>
 
   <section>
@@ -178,6 +187,20 @@ Promise.all([fetch('data/v9_morning.json',{cache:'no-store'}).then(r=>r.json()),
     <div class="meta num">채점 ${oc.days||0}일 (${oc.picks||0}건)${few?' · 표본 부족':''}<br>
     갭 ${P(st.gap.mean)} · 시가→종가 ${P(oc.mean)}${oc.t!=null?` (t ${oc.t.toFixed(2)})`:''} · 시가 후 최고 ${P(st.omax.mean)} / 최저 ${P(st.omin.mean)} · D+3 ${P(st.d3.mean)} · 시가→종가 플러스 ${st.win_oc==null?'—':Math.round(st.win_oc*100)+'%'}</div></div>`;}).join('')+h5card(L.h5);
 }).catch(()=>{$('v9m').innerHTML='<div class="empty">아직 업로드된 아침 후보가 없습니다 (서버 PC 07:45 업로드).</div>';});
+
+// ── 저녁 평가 (평일 20:15) ──
+fetch('data/eval.json',{cache:'no-store'}).then(r=>r.json()).then(E=>{
+  const P=x=>x==null?'—':pct(x*100), T=x=>x==null?'':` <span class="meta">t ${x.toFixed(2)}</span>`;
+  $('evnote').textContent=`${E.day} 아침 추천을 그날 정규장 일봉으로 채점 (시가 매수 가정, 비용 ${(E.cost*100).toFixed(2)}% 차감, '맞음' = 시가→종가 플러스). 조언은 미리 정한 규칙으로만 만들고, 하루 결과는 '관찰'로만 씁니다.`;
+  $('evadv').innerHTML=E.advice.map(a=>`<li>${a}</li>`).join('')+(E.ai?`<li class="meta">🤖 ${E.ai}</li>`:'');
+  $('evtab').innerHTML='<tr><th>목록</th><th class="r">종목</th><th class="r">시가→종가</th><th class="r">맞음</th><th class="r">지수 대비</th><th class="r">+3% 닿음</th><th class="r">누적</th><th class="r">누적 평균</th><th>판정</th></tr>'+
+    E.lists.map(x=>{const t=x.today||{}, c=x.cum;
+      return `<tr><td>${x.label}<div class="meta">${x.horizon==='10d'?'10일 보유 규칙 · 오늘 보유 1일째':'당일 관점'}</div>
+      ${x.items.length?`<details><summary>종목별</summary>${x.items.map(i=>`<div class="num" style="font-size:12px">${i.name} 갭 ${P(i.gap)} · 시가→종가 <span class="${cls(i.oc)}">${P(i.oc)}</span> · 최고 ${P(i.omax)} / 최저 ${P(i.omin)}</div>`).join('')}</details>`:''}</td>
+      <td class="r num">${t.n??0}</td><td class="r num ${cls(t.mean)}">${P(t.mean)}</td><td class="r num">${t.hit==null?'—':Math.round(t.hit*100)+'%'}</td>
+      <td class="r num ${cls(t.ex_idx)}">${P(t.ex_idx)}</td><td class="r num">${t.tgt3==null?'—':Math.round(t.tgt3*100)+'%'}</td>
+      <td class="r num">${c.days}일</td><td class="r num">${P(c.mean)}${T(c.t)}</td><td style="white-space:normal;min-width:180px">${x.verdict}</td></tr>`;}).join('');
+}).catch(()=>{$('evnote').textContent='첫 평가는 오늘 20:15 이후에 나옵니다.';});
 
 // ── 보유 종목 버튼: GitHub 새 이슈(제목=명령)를 열고, 저장소 주인이 제출하면 manual 워크플로가 장부를 고친다 ──
 const REPO=(()=>{const o=location.hostname.split('.')[0],r=location.pathname.split('/').filter(Boolean)[0];
