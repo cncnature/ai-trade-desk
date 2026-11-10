@@ -68,6 +68,12 @@ td.r,th.r{text-align:right}
   </section>
 
   <section>
+    <h2>다가오는 배당 · 참고 (매매 안 함)</h2>
+    <p class="rule" id="divnote"></p>
+    <div class="scroll"><table id="divup"></table></div>
+  </section>
+
+  <section>
     <h2>검증 게이트</h2>
     <p class="rule" id="rule"></p>
     <div class="scroll"><table id="val"></table></div>
@@ -158,6 +164,25 @@ fetch('data/v9_morning.json',{cache:'no-store'}).then(r=>r.json()).then(m=>{
     <div class="meta num">채점 ${oc.days||0}일 (${oc.picks||0}건)${few?' · 표본 부족':''}<br>
     갭 ${P(st.gap.mean)} · 시가→종가 ${P(oc.mean)}${oc.t!=null?` (t ${oc.t.toFixed(2)})`:''} · 시가 후 최고 ${P(st.omax.mean)} / 최저 ${P(st.omin.mean)} · D+3 ${P(st.d3.mean)} · 시가→종가 플러스 ${st.win_oc==null?'—':Math.round(st.win_oc*100)+'%'}</div></div>`;}).join('');
 }).catch(()=>{$('v9m').innerHTML='<div class="empty">아직 업로드된 아침 후보가 없습니다 (서버 PC 07:45 업로드).</div>';});
+
+// 배당 캘린더(같은 github.io 주소)의 일정을 실시간으로 읽는다. 마지막 매수일이 오늘~14일 안인 것만.
+fetch('/kr-dividend-calendar/data.json',{cache:'no-store'}).then(r=>r.json()).then(c=>{
+  const hol=new Set(Object.values(c.holidays||{}).flatMap(o=>Object.keys(o)));
+  const ymd=d=>d.toISOString().slice(0,10);
+  const isTd=d=>{const w=d.getUTCDay();return w>0&&w<6&&!hol.has(ymd(d));};
+  const back=(s,n)=>{let d=new Date(s+'T00:00:00Z');while(n>0){d.setUTCDate(d.getUTCDate()-1);if(isTd(d))n--;}return ymd(d);};
+  const now=new Date(Date.now()+9*3600e3), today=ymd(now), lim=ymd(new Date(now.getTime()+14*86400e3));
+  const rows=(c.events||[]).filter(e=>e.last_buy_date>=today&&e.last_buy_date<=lim).sort((a,b)=>a.last_buy_date.localeCompare(b.last_buy_date));
+  $('divnote').innerHTML=`배당 캘린더(<a href="/kr-dividend-calendar/" style="color:inherit">cncnature.github.io/kr-dividend-calendar</a>, ${String(c.generated_at||'').slice(0,16).replace('T',' ')} 갱신)의 일정을 그대로 보여 줍니다. `+
+    `‘D-3 진입’은 배당 D-3 규칙(배당락 3거래일 전 시가 → 마지막 매수일 종가)의 날짜일 뿐, 이 규칙은 아직 검증 전이라 매매하지 않습니다. ‘예상’은 공시 전 추정 날짜입니다.`;
+  const last=e=>(e.ref_dividends||[])[0];
+  $('divup').innerHTML='<tr><th>종목</th><th>구분</th><th>상태</th><th>D-3 진입(참고)</th><th>마지막 매수일</th><th>배당락일</th><th class="r">배당금</th></tr>'+
+    (rows.length?rows.map(e=>`<tr><td>${e.name}<span class="meta num"> ${e.code}</span></td><td>${e.period||''}</td>
+      <td class="st ${e.status==='확정'?'pass':'obs'}">${e.status}</td><td class="num">${back(e.ex_date,3)}</td>
+      <td class="num">${e.last_buy_date}</td><td class="num">${e.ex_date}</td>
+      <td class="r num">${e.dps?fmt(e.dps)+'원':(last(e)?`<span class="meta">직전 ${fmt(last(e).dps)}원</span>`:'—')}</td></tr>`).join('')
+     :'<tr><td colspan="7" class="meta">앞으로 14일 안에 마지막 매수일이 있는 배당 일정이 없습니다.</td></tr>');
+}).catch(()=>{$('divnote').textContent='배당 캘린더 일정을 불러오지 못했습니다 (cncnature.github.io/kr-dividend-calendar).';});
 
 fetch('data/v9_record.json',{cache:'no-store'}).then(r=>r.json()).then(v=>{
   $('v9note').textContent=v.note;
