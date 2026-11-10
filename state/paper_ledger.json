@@ -9,5 +9,9 @@
    "date": "2026-11-10",
    "equity": 200000000
   }
- ]
+ ],
+ "rules": {
+  "target_pct": 5.0,
+  "stop_pct": null
+ }
 }
