@@ -34,7 +34,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: 시세 캐시 복원
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: data/cache
           key: px-${{ github.run_id }}
