@@ -162,7 +162,7 @@ Promise.all([fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()),Qp])
     :'<tr><td colspan="7" class="meta">아직 청산된 거래가 없습니다.</td></tr>');
 }).catch(e=>{$('asof').textContent='데이터를 불러오지 못했습니다: '+e});
 
-Promise.all([fetch('data/v9_morning.json',{cache:'no-store'}).then(r=>r.json()),Qp]).then(([m])=>{
+Promise.all([fetch('data/v9_morning.json',{cache:'no-store'}).then(r=>r.json()),Qp,fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()).catch(()=>({}))]).then(([m,_q,L])=>{
   $('v9mnote').textContent=`${m.day} 07:40 아침 PDF 후보 · 종가·등락률은 ${Q.day&&Q.day>=m.day?Q.day+' 장 마감 기준(전일 종가 대비)':'장 마감 뒤 16:00 에 채워짐'} · ${m.note} 성적은 문턱을 넘은 후보의 실제 결과를 날짜별 평균으로 묶은 것 — 20일 미만은 판단 불가.`;
   const P=x=>x==null?'—':pct(x*100);
   $('v9m').innerHTML=m.sections.map(s=>{const st=s.stats, oc=st.oc;
@@ -170,8 +170,22 @@ Promise.all([fetch('data/v9_morning.json',{cache:'no-store'}).then(r=>r.json()),
     return `<div class="card"><div class="top"><div><div class="nm">${s.label}</div><div class="cd">${s.origin}${s.threshold!=null?` · 점수 ${s.threshold}↑`:' · 전부'}</div></div><div class="score">${s.today.length}</div></div>
     ${s.today.length?`<div class="scroll"><table style="border:0"><tr><th>종목</th><th class="r">점수</th><th class="r">기준가</th><th class="r">종가</th><th class="r">등락률</th></tr>${s.today.map(x=>`<tr><td>${x.name}<span class="meta num"> ${x.code}</span></td><td class="r num">${x.score??'—'}</td><td class="r num">${fmt(x.ref)}</td><td class="r num">${qClose(x.code)}</td><td class="r num">${qChg(x.code)}</td></tr>`).join('')}</table></div>`:'<div class="meta">문턱을 넘은 후보 없음</div>'}
     <div class="meta num">채점 ${oc.days||0}일 (${oc.picks||0}건)${few?' · 표본 부족':''}<br>
-    갭 ${P(st.gap.mean)} · 시가→종가 ${P(oc.mean)}${oc.t!=null?` (t ${oc.t.toFixed(2)})`:''} · 시가 후 최고 ${P(st.omax.mean)} / 최저 ${P(st.omin.mean)} · D+3 ${P(st.d3.mean)} · 시가→종가 플러스 ${st.win_oc==null?'—':Math.round(st.win_oc*100)+'%'}</div></div>`;}).join('');
+    갭 ${P(st.gap.mean)} · 시가→종가 ${P(oc.mean)}${oc.t!=null?` (t ${oc.t.toFixed(2)})`:''} · 시가 후 최고 ${P(st.omax.mean)} / 최저 ${P(st.omin.mean)} · D+3 ${P(st.d3.mean)} · 시가→종가 플러스 ${st.win_oc==null?'—':Math.round(st.win_oc*100)+'%'}</div></div>`;}).join('')+h5card(L.h5);
 }).catch(()=>{$('v9m').innerHTML='<div class="empty">아직 업로드된 아침 후보가 없습니다 (서버 PC 07:45 업로드).</div>';});
+
+// ⑥ H5-v1 — 이 시스템이 직접 계산 (v9 아침 리포트와 같은 선정), 매일 기록해 10거래일 뒤 자체 채점
+function h5card(h){
+  if(!h||h.error||!h.picks) return `<div class="card"><div class="nm">⑥ H5-v1 외국인 보유율 상위 20%</div><div class="meta">${h&&h.error?'계산 실패: '+h.error:'아직 계산 전 — 수급 파일이 올라온 뒤 아침 분석에서 채워짐'}</div></div>`;
+  const P=x=>x==null?'—':pct(x*100), T=x=>x==null?'':` (t ${x.toFixed(2)})`, e=h.evidence, sc=h.score;
+  return `<div class="card" style="border-color:var(--ok)"><div class="top"><div><div class="nm">⑥ H5-v1 외국인 보유율 상위 20%</div>
+    <div class="cd">v9 검증 통과 · 종목군 ${h.n_group}종 중 거래대금 순 · ${h.asof} 기준</div></div><div class="score">${h.picks.length}</div></div>
+    <div class="scroll"><table style="border:0"><tr><th>종목</th><th class="r">외국인</th><th class="r">기준가</th><th class="r">종가</th><th class="r">등락률</th></tr>
+    ${h.picks.map(x=>`<tr><td>${x.name}<span class="meta num"> ${x.code}</span></td><td class="r num">${x.hold}%</td><td class="r num">${fmt(x.close)}</td><td class="r num">${qClose(x.code)}</td><td class="r num">${qChg(x.code)}</td></tr>`).join('')}</table></div>
+    <div class="meta num">v9 검증: 탐색 전 종목 대비 10일 ${P(e.explore.excess)}${T(e.explore.t)} · 확인 ${P(e.confirm.excess)}${T(e.confirm.t)}<br>
+    한계: 코스피 대비 ${P(e.vs_kospi.excess)}${T(e.vs_kospi.t)} — 지수 대신이 아니라 개별주를 산다면 이 안에서<br>
+    규칙: 다음 날 09:00 시가 매수 · 같은 비중 · 10거래일째 종가 매도 · 순서에 근거 없음(분산용)<br>
+    자체 채점: ${sc.days?`${sc.first}부터 ${sc.days}일 · 10일 평균 ${P(sc.ret)} · 전 종목 대비 ${P(sc.ex_all)}${T(sc.t_all)} · 코스피 대비 ${P(sc.ex_kospi)}${T(sc.t_kospi)}`:`10거래일 지난 기록 없음 (대기 ${sc.pending||0}일)`}</div></div>`;
+}
 
 // 배당 캘린더(같은 github.io 주소)의 일정을 실시간으로 읽는다. 마지막 매수일이 오늘~14일 안인 것만.
 Promise.all([fetch('/kr-dividend-calendar/data.json',{cache:'no-store'}).then(r=>r.json()),Qp]).then(([c])=>{

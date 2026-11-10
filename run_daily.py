@@ -14,6 +14,7 @@ import pandas as pd
 
 from desk import ai, notify, score, validate
 from desk import events as event_strategy
+from desk import h5
 from desk.broker import PaperBroker
 from desk.config import CFG
 from desk.data import flow_universe, get_source, load_index, load_stock
@@ -120,6 +121,10 @@ def main() -> int:
         paper.queue(picks)
         paper.save()
     psum = paper.summary()
+    try:  # 참고 칸: H5-v1 외국인 보유율 상위 20% (v9 아침 리포트와 같은 선정) + 자체 채점
+        h5res = h5.run(panel, names, kospi.shift(-CFG.hold_days) / kospi - 1)
+    except Exception as ex:
+        h5res = {"error": f"{type(ex).__name__}: {ex}"[:200]}
 
     # ── 대시보드 데이터 ──
     def idx(s: pd.Series) -> dict:
@@ -131,7 +136,7 @@ def main() -> int:
         "source": CFG.data_source, "universe": len(frames), "failed": len(failed),
         "flow_coverage": sum(1 for f in frames.values() if f["frgn_hold_pct"].notna().any()),
         "market": {"KOSPI": idx(kospi), "KOSDAQ": idx(kosdaq)},
-        "validation": val, "picks": picks, "paper": psum, "events": events,
+        "validation": val, "picks": picks, "paper": psum, "events": events, "h5": h5res,
     })
     (CFG.docs_data_dir / "latest.json").write_text(json.dumps(out, ensure_ascii=False))
     hist = CFG.docs_data_dir / "history"

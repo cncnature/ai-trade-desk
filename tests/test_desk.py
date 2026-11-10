@@ -137,3 +137,21 @@ def test_dividend_event_gate_detects_runup(tmp_path, monkeypatch):
     monkeypatch.setattr(events, "EVENTS", p)
     r = events.run(frames, cal)
     assert r["dates"] >= 20 and r["status"] == "통과", r
+
+
+def test_h5_selects_top_hold_and_grades():
+    from desk import h5
+
+    src = SyntheticSource(effect=0.0003)
+    frames = {s.code: load_stock(src, s.code, 400) for s in src.universe(40)}
+    panel = build_panel(frames, CFG.hold_days, CFG.cost_roundtrip)
+    names = {c: (c, "") for c in frames}
+    kospi = src.ohlcv("KOSPI", 400)["close"]
+    for d in sorted(panel["date"].unique())[-40:-20]:  # 과거 날짜를 기록해 채점이 되는지
+        sub = panel[panel["date"] <= d]
+        h5.run(sub, names, kospi.shift(-10) / kospi - 1)
+    r = h5.run(panel, names, kospi.shift(-10) / kospi - 1)
+    last = panel[panel["date"] == panel["date"].max()]
+    cut = last["frgn_hold"].quantile(0.8)
+    assert r["picks"] and all(last.set_index("code").loc[p["code"], "frgn_hold"] >= cut - 1e-9 for p in r["picks"])
+    assert r["score"]["days"] >= 15

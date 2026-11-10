@@ -32,6 +32,8 @@ def targets() -> dict[str, float | None]:
     if p.exists():
         for x in json.loads(p.read_text(encoding="utf-8")).get("picks", []):
             out.setdefault(x["code"], x.get("entry_ref"))
+        for x in (json.loads(p.read_text(encoding="utf-8")).get("h5") or {}).get("picks", []):
+            out.setdefault(x["code"], x.get("close"))
     try:
         cal = requests.get(CAL_URL, timeout=20).json()
         today = pd.Timestamp.now(tz="Asia/Seoul").normalize().tz_localize(None)
