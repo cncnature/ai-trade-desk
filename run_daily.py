@@ -24,8 +24,14 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--revalidate", action="store_true")
     ap.add_argument("--no-notify", action="store_true")
+    ap.add_argument("--diag", action="store_true", help="데이터 주소 접속 점검만 하고 종료")
     args = ap.parse_args()
     CFG.ensure_dirs()
+    if args.diag:
+        from desk.data import diagnose
+
+        diagnose()
+        return 0
 
     src = get_source()
     uni = src.universe(CFG.top_n_per_market)
@@ -39,7 +45,8 @@ def main() -> int:
         if i % 25 == 0:
             print(f"  수집 {i}/{len(uni)}", flush=True)
     if not frames:
-        print("수집된 종목이 없습니다.", failed[:5])
+        print(f"수집된 종목이 없습니다. 유니버스 {len(uni)}종목, 실패 예시 {failed[:5]}")
+        print("→ python run_daily.py --diag 로 어느 주소가 막혔는지 확인하세요.")
         return 1
 
     kospi = load_index(src, "KOSPI", CFG.history_days)

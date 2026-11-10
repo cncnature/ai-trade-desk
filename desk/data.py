@@ -59,6 +59,50 @@ class NaverSource:
         return ""
 
     def universe(self, top_n: int) -> list[Stock]:
+        """시총 상위 종목. 경로 3개를 차례로 시도하고, 성공한 목록은 state/universe.json 에 남긴다."""
+        import json
+
+        seed = CFG.state_dir / "universe.json"
+        for fn in (self._universe_mobile, self._universe_pc):
+            try:
+                out = fn(top_n)
+                if len(out) >= top_n:  # 두 시장 합쳐 최소 top_n 이상이면 성공으로 봄
+                    print(f"  유니버스: {fn.__name__} → {len(out)}종목", flush=True)
+                    CFG.ensure_dirs()
+                    seed.write_text(json.dumps([s.__dict__ for s in out], ensure_ascii=False))
+                    return out
+                print(f"  유니버스: {fn.__name__} 결과 {len(out)}종목 — 다음 경로 시도", flush=True)
+            except Exception as e:
+                print(f"  유니버스: {fn.__name__} 실패 {type(e).__name__}: {str(e)[:160]}", flush=True)
+        if seed.exists():
+            out = [Stock(**d) for d in json.loads(seed.read_text())]
+            print(f"  유니버스: 저장된 목록 사용 {len(out)}종목", flush=True)
+            return out
+        return []
+
+    def _universe_mobile(self, top_n: int) -> list[Stock]:
+        import json
+
+        out: list[Stock] = []
+        for market in ("KOSPI", "KOSDAQ"):
+            got: list[Stock] = []
+            page = 1
+            while len(got) < top_n and page <= 10:
+                j = json.loads(self._get(f"https://m.stock.naver.com/api/stocks/marketValue/{market}",
+                                         {"page": page, "pageSize": 100}))
+                rows = j.get("stocks", [])
+                if not rows:
+                    break
+                for r in rows:
+                    code, name = r.get("itemCode", ""), r.get("stockName", "")
+                    if not re.fullmatch(r"\d{6}", code) or "스팩" in name or "ETN" in name:
+                        continue
+                    got.append(Stock(code, name, market))
+                page += 1
+            out.extend(got[:top_n])
+        return out
+
+    def _universe_pc(self, top_n: int) -> list[Stock]:
         out: list[Stock] = []
         for sosok, market in ((0, "KOSPI"), (1, "KOSDAQ")):
             got: list[Stock] = []
@@ -69,7 +113,7 @@ class NaverSource:
                     {"sosok": sosok, "page": page},
                     encoding="euc-kr",
                 )
-                rows = re.findall(r'href="/item/main\.naver\?code=(\d{6})" class="tltle">([^<]+)</a>', html)
+                rows = re.findall(r'/item/main\.naver\?code=(\d{6})"[^>]*class="tltle"[^>]*>([^<]+)</a>', html)
                 if not rows:
                     break
                 for code, name in rows:
@@ -206,10 +250,16 @@ def load_stock(src, code: str, history: int) -> pd.DataFrame:
     f_path = CFG.cache_dir / f"{code}_flow.csv"
     synthetic = isinstance(src, SyntheticSource)
     px = src.ohlcv(code, 30 if (p_path.exists() and not synthetic) else history)
-    fl = src.flow(code, 1 if (f_path.exists() and not synthetic) else max(1, history // 20))
+    try:
+        fl = src.flow(code, 1 if (f_path.exists() and not synthetic) else max(1, history // 20))
+    except Exception:  # 수급 실패는 종목을 버리지 않는다 (수급 팩터만 비게 됨)
+        fl = pd.DataFrame(columns=["inst_net", "frgn_net", "frgn_hold_pct"], dtype=float)
     if not synthetic:
         px = _merge_cache(p_path, px)
-        fl = _merge_cache(f_path, fl)
+        if len(fl):
+            fl = _merge_cache(f_path, fl)
+        elif f_path.exists():
+            fl = pd.read_csv(f_path, index_col=0, parse_dates=True)
     df = px.join(fl, how="left")
     df[["inst_net", "frgn_net"]] = df[["inst_net", "frgn_net"]].fillna(0.0)
     df["frgn_hold_pct"] = df["frgn_hold_pct"].ffill()
@@ -218,3 +268,24 @@ def load_stock(src, code: str, history: int) -> pd.DataFrame:
 
 def load_index(src, symbol: str, history: int) -> pd.Series:
     return src.ohlcv(symbol, history)["close"]
+
+
+def diagnose() -> None:
+    """각 데이터 주소의 응답을 찍는다. GitHub Actions 처럼 해외 서버에서 막히는지 확인용."""
+    import requests
+
+    tests = {
+        "모바일 시총 API": ("https://m.stock.naver.com/api/stocks/marketValue/KOSPI", {"page": 1, "pageSize": 5}),
+        "PC 시총 페이지": ("https://finance.naver.com/sise/sise_market_sum.naver", {"sosok": 0, "page": 1}),
+        "일봉 fchart": ("https://fchart.stock.naver.com/sise.nhn",
+                        {"symbol": "005930", "timeframe": "day", "count": 5, "requestType": 0}),
+        "수급 frgn": ("https://finance.naver.com/item/frgn.naver", {"code": "005930", "page": 1}),
+    }
+    for name, (url, params) in tests.items():
+        try:
+            r = requests.get(url, params=params, headers=UA, timeout=15)
+            body = r.text
+            hint = "삼성전자" in r.content.decode("euc-kr", "ignore") or "005930" in body or "삼성전자" in body
+            print(f"[점검] {name}: HTTP {r.status_code}, {len(r.content)}B, 삼성전자 포함={hint}")
+        except Exception as e:
+            print(f"[점검] {name}: 실패 {type(e).__name__}: {str(e)[:120]}")
