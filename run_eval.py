@@ -193,8 +193,8 @@ def main(src=None, now: pd.Timestamp | None = None) -> int:
             hit3 = day[day["omax"] >= TGT]
             faded = hit3[hit3["chg"] < hit3["gap"]]  # 장중 +3% 닿았지만 종가는 시가보다 낮게
             msg = f"관찰: v9 아침 후보 {len(day)}종목 중 장중 시가 대비 +3% 닿은 비율 {len(hit3) / len(day) * 100:.0f}%"
-            if len(hit3):
-                msg += f" · 그중 {len(faded)}종목은 종가가 시가 아래 — +3% 익절이 종가 보유보다 나았던 경우"
+            if len(faded):
+                msg += f" · 그중 {len(faded)}종목은 종가가 시가 아래로 밀림 — 이 경우 +3% 익절이 종가 보유보다 나았음"
             advice.append(msg)
     for x in out_lists:
         c = x["cum"]
