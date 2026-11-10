@@ -51,9 +51,15 @@ def main() -> int:
         uni = src.universe(CFG.top_n_per_market)
     names = {s.code: (s.name, s.market) for s in uni}
     frames, failed = {}, []
+    now_kst = pd.Timestamp.now(tz="Asia/Seoul")
+    today_kst = now_kst.normalize().tz_localize(None)
     for i, s in enumerate(uni, 1):
         try:
-            frames[s.code] = load_stock(src, s.code, CFG.history_days)
+            df = load_stock(src, s.code, CFG.history_days)
+            # 장중(15:40 전)에 돌면 오늘 봉은 미완성 — 판정·체결에 쓰지 않는다
+            if CFG.data_source != "synthetic" and len(df) and df.index[-1] >= today_kst and now_kst.strftime("%H:%M") < "15:40":
+                df = df[df.index < today_kst]
+            frames[s.code] = df
         except Exception as e:  # 한 종목 실패가 전체를 멈추지 않게
             failed.append((s.code, type(e).__name__))
         if i % 25 == 0:
@@ -118,8 +124,10 @@ def main() -> int:
                 bars[code] = {"open": float(r["open"]), "high": float(r["high"]),
                               "low": float(r["low"]), "close": float(r["close"])}
         events = paper.process_day(asof, bars, CFG.cost_roundtrip)
-        paper.queue(picks)
-        paper.save()
+    # 내일 시가 주문은 매 실행마다 최신 후보로 다시 등록한다 (같은 날 재실행해도 주문이 빠지지 않게)
+    paper.s["pending"] = []
+    paper.queue(picks)
+    paper.save()
     psum = paper.summary()
     try:  # 참고 칸: H5-v1 외국인 보유율 상위 20% (v9 아침 리포트와 같은 선정) + 자체 채점
         h5res = h5.run(panel, names, kospi.shift(-CFG.hold_days) / kospi - 1)
