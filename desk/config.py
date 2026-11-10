@@ -41,9 +41,14 @@ class Config:
     cost_roundtrip: float = field(default_factory=lambda: _env("DESK_COST", 0.0025, float))  # 수수료+세금 왕복
 
     # ── 리스크 ─────────────────────────────────────────────
-    equity: float = field(default_factory=lambda: _env("DESK_EQUITY", 10_000_000, float))
+    equity: float = field(default_factory=lambda: _env("DESK_EQUITY", 200_000_000, float))  # 모의 계좌 시작 자산 2억
     risk_per_trade: float = 0.01         # 손절 시 자본의 1%
-    max_weight: float = 0.15             # 종목당 최대 15%
+    max_weight: float = 0.15             # 종목당 최대 비중 (금액 상한과 함께 적용 — 둘 중 작은 쪽)
+    max_position_krw: float = field(default_factory=lambda: _env("DESK_MAX_POS_KRW", 10_000_000, float))  # 종목당 최대 1,000만 원
+
+    def position_cap(self, equity: float) -> float:
+        return min(equity * self.max_weight, self.max_position_krw)
+
     max_positions: int = field(default_factory=lambda: _env("DESK_MAX_POS", 6, int))
     atr_stop_mult: float = 2.0
     atr_target_mult: float = 3.0

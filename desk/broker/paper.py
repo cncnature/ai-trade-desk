@@ -39,7 +39,8 @@ class PaperBroker:
             if not b or o["code"] in self.s["positions"]:
                 continue
             px = b["open"]
-            qty = min(o["qty"], int(self.s["cash"] // (px * (1 + half))))
+            # 시가가 기준가보다 높게 열려도 종목당 금액 상한을 넘지 않게
+            qty = min(o["qty"], int(CFG.position_cap(self.equity()) // px), int(self.s["cash"] // (px * (1 + half))))
             if qty <= 0:
                 continue
             self.s["cash"] -= qty * px * (1 + half)

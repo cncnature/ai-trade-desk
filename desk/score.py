@@ -43,7 +43,7 @@ def plan_trade(row: pd.Series, equity: float) -> dict:
     target = price * (1 + CFG.atr_target_mult * atr_pct)
     risk_per_share = max(price - stop, price * 0.005)
     qty_risk = (equity * CFG.risk_per_trade) / risk_per_share
-    qty_cap = (equity * CFG.max_weight) / price
+    qty_cap = CFG.position_cap(equity) / price
     qty = int(max(0, math.floor(min(qty_risk, qty_cap))))
     return {
         "entry_ref": round(price), "stop": round(stop), "target": round(target),

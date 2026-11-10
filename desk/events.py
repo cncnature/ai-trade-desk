@@ -148,7 +148,7 @@ def upcoming(frames: dict[str, pd.DataFrame], cal: pd.DatetimeIndex, asof: pd.Ti
         f = frames[e.code]
         name, market = names.get(e.code, (e.code, ""))
         price = float(f["close"].iloc[-1])
-        qty = int(CFG.equity * CFG.max_weight // price) if price > 0 else 0
+        qty = int(CFG.position_cap(CFG.equity) // price) if price > 0 else 0
         out.append({"code": e.code, "name": name, "market": market, "score_pct": 100.0, "votes": [NAME],
                     "entry_ref": round(price), "stop": round(price * 0.9), "target": round(price * 1.2),
                     "qty": qty, "amount": round(qty * price), "atr_pct": None, "hold_days": 3,

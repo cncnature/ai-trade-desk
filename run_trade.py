@@ -55,7 +55,7 @@ def main() -> int:
         if pk["code"] in pos or pk["qty"] <= 0:
             continue
         q = b.price(pk["code"])
-        qty = min(pk["qty"], int(start_cash * CFG.max_weight // max(q["price"], 1)))
+        qty = min(pk["qty"], int(CFG.position_cap(start_cash) // max(q["price"], 1)))
         if qty <= 0:
             continue
         r = b.order(pk["code"], qty, "buy")

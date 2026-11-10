@@ -1,13 +1,13 @@
 {
- "cash": 10000000,
- "start_equity": 10000000,
+ "cash": 200000000,
+ "start_equity": 200000000,
  "positions": {},
  "pending": [],
  "closed": [],
  "curve": [
   {
    "date": "2026-11-10",
-   "equity": 10000000
+   "equity": 200000000
   }
  ]
 }
