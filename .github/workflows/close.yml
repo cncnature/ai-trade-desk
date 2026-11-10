@@ -1,0 +1,36 @@
+name: close-quotes
+
+# 장 마감 뒤 화면에 나온 종목들의 오늘 종가·등락률 저장 (표시용, 판정·매매에 쓰지 않음)
+on:
+  schedule:
+    - cron: "0 7 * * 1-5"   # 평일 16:00 KST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: close-quotes
+  cancel-in-progress: true
+
+jobs:
+  quotes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python run_close.py
+      - name: 결과 커밋
+        run: |
+          git config user.name "desk-bot"
+          git config user.email "desk-bot@users.noreply.github.com"
+          git add docs/data/close.json
+          git diff --cached --quiet && exit 0
+          git commit -m "close: $(TZ=Asia/Seoul date +%F)"
+          git pull --rebase -q origin main
+          git push
