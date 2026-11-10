@@ -307,8 +307,7 @@ async function liveTick(){
   const codes=[...new Set([...document.querySelectorAll('.lv[data-code]')].map(e=>e.dataset.code))].filter(c=>/^\d{6}$/.test(c));
   if(!codes.length) return;
   for(let i=0;i<codes.length;i+=40){
-    const q=codes.slice(i,i+40).map(c=>'SERVICE_ITEM:'+c).join('|');
-    const d=await jsonp('https://polling.finance.naver.com/api/realtime?query='+encodeURIComponent(q));
+    const d=await jsonp('https://polling.finance.naver.com/api/realtime?query=SERVICE_ITEM:'+codes.slice(i,i+40).join(','));
     const rows=d&&d.result&&d.result.areas&&d.result.areas[0]?d.result.areas[0].datas:[];
     for(const r of rows){
       const nx=r.nxtOverMarketPriceInfo, nxOpen=nx&&nx.overMarketStatus==='OPEN'&&nx.overPrice;
