@@ -169,7 +169,7 @@ def _ledger_with_two():
     b = PaperBroker(equity=200_000_000)
     b.queue([dict(_pick(), code="000001", name="A"), dict(_pick(), code="000002", name="B")])
     bar = {"open": 100, "high": 101, "low": 99, "close": 100}
-    b.process_day("2026-11-11", {"000001": bar, "000002": bar}, 0.0)
+    b.process_day("2099-01-02", {"000001": bar, "000002": bar}, 0.0)  # 등록 다음 장
     b.save()
     return b
 
