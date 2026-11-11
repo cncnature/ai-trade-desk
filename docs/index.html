@@ -62,8 +62,15 @@ details summary{cursor:pointer;color:var(--mute);font-size:12px}
     <span class="meta" id="asof">불러오는 중…</span>
     <span class="badge" id="src"></span>
     <span class="badge" id="live">시세 연결 중…</span>
+    <a class="badge" id="hchip" href="#health" style="text-decoration:none">점검 중…</a>
   </header>
   <div class="strip" id="market"></div>
+
+  <section id="health">
+    <h2>시스템 점검 · 어디가 막혔나</h2>
+    <p class="rule">평일 기준 각 단계가 예정 시각까지 오늘 결과를 냈는지 GitHub 기록과 데이터 파일로 확인합니다. 페이지를 열 때마다 다시 점검합니다.</p>
+    <div class="scroll"><table id="htab"><tr><td class="meta">점검 중…</td></tr></table></div>
+  </section>
 
   <section>
     <h2>오늘의 후보 · 다음 장 시가 진입</h2>
@@ -311,7 +318,9 @@ async function liveTick(){
     const rows=d&&d.result&&d.result.areas&&d.result.areas[0]?d.result.areas[0].datas:[];
     for(const r of rows){
       const nx=r.nxtOverMarketPriceInfo, nxOpen=nx&&nx.overMarketStatus==='OPEN'&&nx.overPrice;
-      let px=r.nv, chg=r.cr, ses='정규장';
+      // cr·cv 는 부호 없는 값 — rf(1 상한·2 상승·3 보합·4 하한·5 하락)로 부호를 붙인다
+      const sign=(r.rf==='4'||r.rf==='5')?-1:1;
+      let px=r.nv, chg=sign*Math.abs(r.cr), ses='정규장';
       if(r.ms!=='OPEN'&&nxOpen){px=num(nx.overPrice);chg=num(nx.fluctuationsRatio);ses=nx.tradingSessionType==='PRE_MARKET'?'NXT 프리마켓':'NXT 애프터마켓';}
       else if(r.ms!=='OPEN'){ses=kstHM()<'09:00'?'전일 종가 (NXT 미거래)':'종가';}
       LIVE.q[r.cd]={px,chg,ses};LIVE.session=ses;
@@ -333,6 +342,53 @@ async function liveLoop(){
   if(wd>0&&wd<6&&hm>='07:59'&&hm<'20:10') setTimeout(liveLoop,10000);
 }
 setTimeout(liveLoop,1500);  // 각 칸이 그려진 뒤 시작
+
+// ── 시스템 점검 ──
+// 단계별: 예정 시각(KST) 전이면 ⏳, 지나서도 오늘 결과가 없으면 ⚠ + 막혔을 만한 곳 안내, 워크플로 최근 실행이 실패면 ❌
+async function health(){
+  const GH='https://api.github.com/repos/'+REPO;
+  const kst=new Date(Date.now()+9*3600e3), today=kst.toISOString().slice(0,10), hm=kst.toISOString().slice(11,16), wd=kst.getUTCDay();
+  const J=u=>fetch(u,{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
+  const [runs,flowC,lat,v9,cl,ev]=await Promise.all([J(GH+'/actions/runs?per_page=60'),J(GH+'/commits?path=data/flow&per_page=1'),
+    J('data/latest.json'),J('data/v9_morning.json'),J('data/close.json'),J('data/eval.json')]);
+  const lastRun={};(runs&&runs.workflow_runs||[]).forEach(r=>{if(!lastRun[r.name])lastRun[r.name]=r;});
+  const kt=t=>t?new Date(new Date(t).getTime()+9*3600e3).toISOString().slice(0,16).replace('T',' '):'—';
+  const flowAt=flowC&&flowC[0]?kt(flowC[0].commit.committer.date):null;
+  const run=n=>{const r=lastRun[n];return r?{c:r.conclusion||r.status,at:kt(r.created_at),url:r.html_url}:null;};
+  const items=[
+    {n:'배당 공시 수집',due:'06:40',wf:'dividends',got:null,hint:'저장소 Secrets 에 DART_API_KEY 가 있는지 · 서버 PC 06:30 실행 신호(AITradeDesk_KickDividends)'},
+    {n:'서버 PC 수급 업로드',due:'07:40',got:flowAt,hint:'서버 PC가 켜져 로그인돼 있는지 · 작업 스케줄러 AITradeDesk_FlowExport · git 로그인'},
+    {n:'아침 분석 (후보·모의 주문)',due:'08:10',wf:'daily-desk',got:lat&&lat.source!=='synthetic'?kt(lat.generated):null,hint:'서버 PC 수급 업로드가 먼저 와야 바로 시작됨 · 아니면 GitHub 예약(07:50, 지연 잦음)'},
+    {n:'v9 아침 후보 업로드',due:'08:30',got:v9&&v9.day?v9.day+' '+String(v9.generated||'').slice(11,16):null,hint:'차트 스카우트 아침 PDF(07:50) 생성 여부 · 작업 스케줄러 AITradeDesk_V9MorningExport'},
+    {n:'종가 수집',due:'16:20',wf:'close-quotes',got:cl&&cl.day?cl.day:null,hint:'서버 PC 16:05 신호(AITradeDesk_KickClose) 또는 GitHub 예약'},
+    {n:'저녁 평가·조언',due:'20:40',wf:'evening-eval',got:ev&&ev.day?ev.day:null,hint:'서버 PC 20:15 신호(AITradeDesk_KickEval) · 오늘 아침 목록이 있어야 채점됨'},
+  ];
+  let bad=0;
+  const rows=items.map(it=>{
+    const r=it.wf?run(it.wf):null, gotToday=it.got&&it.got.startsWith(today);
+    let st,cls2;
+    if(r&&r.c==='failure'){st='❌ 최근 실행 실패';cls2='down';bad++;}
+    else if(wd===0||wd===6){st='휴장일';cls2='meta';}
+    else if(gotToday||(it.n==='배당 공시 수집'&&r&&r.c==='success'&&r.at.startsWith(today))){st='✅ 정상';cls2='pass';}
+    else if(hm<it.due){st='⏳ 대기 (예정 '+it.due+')';cls2='meta';}
+    else{st='⚠ 오늘 결과 없음';cls2='down';bad++;}
+    return `<tr><td>${it.n}</td><td class="st ${cls2}">${st}</td><td class="num">${it.got||'—'}</td>
+      <td class="num">${r?`<a href="${r.url}" target="_blank" style="color:inherit">${r.c} · ${r.at}</a>`:'—'}</td>
+      <td style="white-space:normal;min-width:260px" class="meta">${st.startsWith('✅')||st.startsWith('⏳')||st==='휴장일'?'':it.hint}</td></tr>`;});
+  // 실시간 시세 · 텔레그램
+  const lv=LIVE.at&&(Date.now()-LIVE.at.getTime()<60000);
+  rows.push(`<tr><td>실시간 시세 (네이버)</td><td class="st ${lv?'pass':'down'}">${lv?'✅ 연결됨':'⚠ 응답 없음'}</td><td class="num">${LIVE.at?LIVE.at.toTimeString().slice(0,8):'—'}</td><td>—</td><td class="meta">${lv?'':'브라우저에서 네이버 시세 요청이 막혔을 수 있음 (광고 차단 확장 등)'}</td></tr>`);
+  if(!lv) bad++;
+  if(lat&&lat.telegram===false){bad++;rows.push(`<tr><td>텔레그램</td><td class="st down">⚠ 미설정</td><td>—</td><td>—</td><td class="meta">저장소 Secrets 에 TELEGRAM_BOT_TOKEN · TELEGRAM_CHAT_ID</td></tr>`);}
+  else if(lat&&lat.telegram) rows.push(`<tr><td>텔레그램</td><td class="st pass">✅ 설정됨</td><td>—</td><td>—</td><td></td></tr>`);
+  // 그 밖 워크플로 실패
+  Object.values(lastRun).filter(r=>r.conclusion==='failure'&&!items.some(i=>i.wf===r.name)).forEach(r=>{bad++;
+    rows.push(`<tr><td>${r.name}</td><td class="st down">❌ 최근 실행 실패</td><td>—</td><td class="num"><a href="${r.html_url}" target="_blank" style="color:inherit">${kt(r.created_at)}</a></td><td class="meta">Actions 로그 확인</td></tr>`);});
+  $('htab').innerHTML='<tr><th>단계</th><th>상태</th><th>마지막 결과</th><th>최근 실행</th><th>막혔을 만한 곳</th></tr>'+rows.join('');
+  const c=$('hchip'); c.textContent=bad?`점검 ⚠ ${bad}`:'점검 ✅ 정상'; c.className='badge '+(bad?'syn':'on');
+  if(!runs) $('htab').insertAdjacentHTML('beforeend','<tr><td colspan="5" class="meta">GitHub 기록 조회 한도에 걸렸을 수 있음 (시간당 60회) — 잠시 뒤 새로고침</td></tr>');
+}
+setTimeout(health,6000);  // 실시간 시세 첫 조회 뒤
 </script>
 </body>
 </html>

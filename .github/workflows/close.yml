@@ -2,6 +2,9 @@ name: close-quotes
 
 # 장 마감 뒤 화면에 나온 종목들의 오늘 종가·등락률 저장 (표시용, 판정·매매에 쓰지 않음)
 on:
+  push:
+    branches: [main]
+    paths: ["kick/close"]   # 서버 PC 실행 신호 (GitHub 예약 지연 대비, 예약은 예비로 유지)
   schedule:
     - cron: "0 7 * * 1-5"   # 평일 16:00 KST
   workflow_dispatch:

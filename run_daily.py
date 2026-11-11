@@ -142,6 +142,7 @@ def main() -> int:
     out = validate.clean_json({
         "asof": asof, "generated": pd.Timestamp.now(tz="Asia/Seoul").isoformat(timespec="minutes"),
         "source": CFG.data_source, "universe": len(frames), "failed": len(failed),
+        "telegram": bool(CFG.telegram_token and CFG.telegram_chat),
         "flow_coverage": sum(1 for f in frames.values() if f["frgn_hold_pct"].notna().any()),
         "market": {"KOSPI": idx(kospi), "KOSDAQ": idx(kosdaq)},
         "validation": val, "picks": picks, "paper": psum, "events": events, "h5": h5res,

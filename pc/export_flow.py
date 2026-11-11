@@ -21,6 +21,7 @@ import json
 import sqlite3
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -129,13 +130,18 @@ def main() -> int:
         since = last_exported()
         df = read_inv(db, codes, since)
         if df.empty:
-            print(f"새 수급 없음 (마지막 {since}) — 푸시하지 않음")
-            return 0
-        for d, g in df.groupby(df["date"].dt.strftime("%Y-%m-%d")):
-            g.to_csv(DAILY / f"{d}.csv", index=False, date_format="%Y-%m-%d")
-        msg = f"flow: {df['date'].min().date()}~{df['date'].max().date()} 추가 ({df['code'].nunique()}종목)"
+            print(f"새 수급 없음 (마지막 {since}) — flow.db 가 아직 갱신되지 않았을 수 있음 (토스 코어 07:20 자동 운영)")
+            msg = f"flow: 새 수급 없음 (마지막 {since}) · 아침 분석 신호"
+        else:
+            for d, g in df.groupby(df["date"].dt.strftime("%Y-%m-%d")):
+                g.to_csv(DAILY / f"{d}.csv", index=False, date_format="%Y-%m-%d")
+            msg = f"flow: {df['date'].min().date()}~{df['date'].max().date()} 추가 ({df['code'].nunique()}종목)"
     print(msg)
 
+    # 서버 PC 신호: 새 수급이 없어도 이 파일이 바뀌어 아침 분석(daily-desk)이 바로 시작된다
+    last = last_exported() if not rebuild else str(df["date"].max().date())
+    (OUT / "heartbeat.json").write_text(json.dumps({"at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                                    "flow_last": last, "note": msg}, ensure_ascii=False), encoding="utf-8")
     if a.dry_run:
         print("--dry-run: 푸시하지 않음")
         return 0

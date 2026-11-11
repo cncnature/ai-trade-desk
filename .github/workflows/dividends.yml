@@ -3,6 +3,9 @@ name: dividends
 # OpenDART '현금·현물배당결정' 공시 전 종목 수집 (배당 D-3 검정용)
 # 하루 호출 한도 2만 건을 배당 캘린더 저장소와 나눠 쓰므로 실행당 8,000건만 쓰고 다음 날 이어서 모은다.
 on:
+  push:
+    branches: [main]
+    paths: ["kick/dividends"]   # 서버 PC 06:30 실행 신호 (GitHub 예약은 몇 시간씩 밀릴 수 있음)
   schedule:
     - cron: "10 20 * * 0-4"   # 평일 05:10 KST (아침 분석 전)
   workflow_dispatch:
@@ -35,6 +38,7 @@ jobs:
         run: |
           git config user.name "desk-bot"
           git config user.email "desk-bot@users.noreply.github.com"
+          [ -d data/dividends ] || { echo "::warning::배당 자료 없음 — 저장소 Secrets 에 DART_API_KEY 를 넣어 주세요"; exit 0; }
           git add data/dividends
           git diff --cached --quiet && exit 0
           git commit -m "dividends: $(TZ=Asia/Seoul date +%F)"
