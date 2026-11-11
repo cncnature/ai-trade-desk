@@ -40,11 +40,12 @@ class Budget(Exception):
 
 
 class Dart:
-    def __init__(self, budget: int):
+    def __init__(self, budget: int, max_minutes: float = 80):
         self.left = budget
+        self.deadline = time.time() + max_minutes * 60  # 워크플로 시간 제한 전에 멈추고 저장 (중간 결과를 잃지 않게)
 
     def get(self, url: str) -> bytes:
-        if self.left <= 0:
+        if self.left <= 0 or time.time() > self.deadline:
             raise Budget()
         self.left -= 1
         for i in range(3):
@@ -116,6 +117,7 @@ def is_div(x: dict) -> bool:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--budget", type=int, default=8000)
+    ap.add_argument("--max-minutes", type=float, default=80)
     ap.add_argument("--codes", help="universe.json 경로 (기본 data/flow/universe.json)")
     a = ap.parse_args()
     if not KEY:
@@ -128,7 +130,7 @@ def main() -> int:
     seen = {e["rcept_no"] for e in events}
     uni_p = a.codes or (ROOT / "data" / "flow" / "universe.json")
     codes = [r["code"] for r in json.loads(open(uni_p, encoding="utf-8").read())]
-    dart = Dart(a.budget)
+    dart = Dart(a.budget, a.max_minutes)
     today = date.today().strftime("%Y%m%d")
     try:
         cmap = dart.corp_codes()
@@ -164,7 +166,7 @@ def main() -> int:
                     events.append({"code": code, "rcept_no": rno, "disclosed": rdt, "report": rnm, **d})
                     seen.add(rno)
     except Budget:
-        print("이번 실행 호출 한도 도달 — 다음 실행에서 이어서 수집")
+        print("이번 실행 호출·시간 한도 도달 — 저장 후 다음 실행에서 이어서 수집")
     finally:
         STATE.write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
         events.sort(key=lambda e: (e["record_date"], e["code"]))
