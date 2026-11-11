@@ -131,7 +131,15 @@ def main() -> int:
         df = read_inv(db, codes, since)
         if df.empty:
             print(f"새 수급 없음 (마지막 {since}) — flow.db 가 아직 갱신되지 않았을 수 있음 (토스 코어 07:20 자동 운영)")
-            msg = f"flow: 새 수급 없음 (마지막 {since}) · 아침 분석 신호"
+            # 07:30·07:50 에는 기다렸다가 다음 시도에서 올린다. 08:05 이후 마지막 시도에서만, 오늘 아직 아무것도
+            # 안 올렸으면 신호만 보내 아침 분석을 어제 수급으로라도 돌린다 (분석·텔레그램이 하루 한 번만 나가게).
+            hb = OUT / "heartbeat.json"
+            sent_today = hb.exists() and json.loads(hb.read_text(encoding="utf-8")).get("at", "").startswith(
+                datetime.now().strftime("%Y-%m-%d"))
+            if datetime.now().strftime("%H:%M") < "08:05" or sent_today:
+                print("→ 이번에는 올리지 않음 (다음 시도에서 다시 확인)" if not sent_today else "→ 오늘 이미 올림")
+                return 0
+            msg = f"flow: 새 수급 없음 (마지막 {since}) · 어제 수급으로 아침 분석 신호"
         else:
             for d, g in df.groupby(df["date"].dt.strftime("%Y-%m-%d")):
                 g.to_csv(DAILY / f"{d}.csv", index=False, date_format="%Y-%m-%d")

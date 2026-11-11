@@ -357,8 +357,8 @@ async function health(){
   const run=n=>{const r=lastRun[n];return r?{c:r.conclusion||r.status,at:kt(r.created_at),url:r.html_url}:null;};
   const items=[
     {n:'배당 공시 수집',due:'06:40',wf:'dividends',got:null,hint:'저장소 Secrets 에 DART_API_KEY 가 있는지 · 서버 PC 06:30 실행 신호(AITradeDesk_KickDividends)'},
-    {n:'서버 PC 수급 업로드',due:'07:40',got:flowAt,hint:'서버 PC가 켜져 로그인돼 있는지 · 작업 스케줄러 AITradeDesk_FlowExport · git 로그인'},
-    {n:'아침 분석 (후보·모의 주문)',due:'08:10',wf:'daily-desk',got:lat&&lat.source!=='synthetic'?kt(lat.generated):null,hint:'서버 PC 수급 업로드가 먼저 와야 바로 시작됨 · 아니면 GitHub 예약(07:50, 지연 잦음)'},
+    {n:'서버 PC 수급 업로드',due:'08:20',got:flowAt,hint:'서버 PC가 켜져 로그인돼 있는지 · 작업 스케줄러 AITradeDesk_FlowExport(07:30·07:50·08:10) · 토스 코어 flow.db 갱신(07:20 자동 운영) · git 로그인'},
+    {n:'아침 분석 (후보·모의 주문)',due:'08:40',wf:'daily-desk',got:lat&&lat.source!=='synthetic'?kt(lat.generated):null,hint:'서버 PC 수급 업로드가 먼저 와야 바로 시작됨 · 아니면 GitHub 예약(07:50, 지연 잦음)'},
     {n:'v9 아침 후보 업로드',due:'08:30',got:v9&&v9.day?v9.day+' '+String(v9.generated||'').slice(11,16):null,hint:'차트 스카우트 아침 PDF(07:50) 생성 여부 · 작업 스케줄러 AITradeDesk_V9MorningExport'},
     {n:'종가 수집',due:'16:20',wf:'close-quotes',got:cl&&cl.day?cl.day:null,hint:'서버 PC 16:05 신호(AITradeDesk_KickClose) 또는 GitHub 예약'},
     {n:'저녁 평가·조언',due:'20:40',wf:'evening-eval',got:ev&&ev.day?ev.day:null,hint:'서버 PC 20:15 신호(AITradeDesk_KickEval) · 오늘 아침 목록이 있어야 채점됨'},
