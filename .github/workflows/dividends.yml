@@ -35,6 +35,7 @@ jobs:
           DART_API_KEY: ${{ secrets.DART_API_KEY }}
         run: python -m desk.dividends --budget ${{ inputs.budget || '8000' }}
       - name: 결과 커밋
+        if: always()   # 수집이 도중에 실패해도 그때까지 모은 것은 저장
         run: |
           git config user.name "desk-bot"
           git config user.email "desk-bot@users.noreply.github.com"

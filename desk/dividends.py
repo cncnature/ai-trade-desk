@@ -41,13 +41,17 @@ class Budget(Exception):
 
 class Dart:
     def __init__(self, budget: int, max_minutes: float = 80):
+        import threading
+
         self.left = budget
         self.deadline = time.time() + max_minutes * 60  # 워크플로 시간 제한 전에 멈추고 저장 (중간 결과를 잃지 않게)
+        self.lock = threading.Lock()
 
     def get(self, url: str) -> bytes:
-        if self.left <= 0 or time.time() > self.deadline:
-            raise Budget()
-        self.left -= 1
+        with self.lock:
+            if self.left <= 0 or time.time() > self.deadline:
+                raise Budget()
+            self.left -= 1
         for i in range(3):
             try:
                 req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -79,6 +83,8 @@ class Dart:
         while True:
             q = dict(crtfc_key=KEY, pblntf_ty="I", page_count=100, page_no=page, **params)
             d = json.loads(self.get(LIST_URL + urllib.parse.urlencode(q)))
+            if d.get("status") == "020":  # 일일 사용 한도 초과
+                raise Budget()
             if d.get("status") != "000":
                 return out  # 013 = 조회 결과 없음
             out += d.get("list", [])
@@ -87,7 +93,12 @@ class Dart:
             page += 1
 
     def parse_doc(self, rcept_no: str) -> dict:
-        z = zipfile.ZipFile(io.BytesIO(self.get(DOC_URL + urllib.parse.urlencode(dict(crtfc_key=KEY, rcept_no=rcept_no)))))
+        raw0 = self.get(DOC_URL + urllib.parse.urlencode(dict(crtfc_key=KEY, rcept_no=rcept_no)))
+        if raw0[:2] != b"PK":  # 원문 대신 오류(JSON/XML)가 온 경우
+            if b'"020"' in raw0 or b"<status>020</status>" in raw0:
+                raise Budget()
+            return {"dps": None, "record_date": None, "kind": None, "error": raw0[:80].decode("utf-8", "ignore")}
+        z = zipfile.ZipFile(io.BytesIO(raw0))
         raw = b"".join(z.read(n) for n in z.namelist() if n.endswith(".xml"))
         for enc in ("utf-8", "euc-kr", "cp949"):
             try:
@@ -132,18 +143,33 @@ def main() -> int:
     codes = [r["code"] for r in json.loads(open(uni_p, encoding="utf-8").read())]
     dart = Dart(a.budget, a.max_minutes)
     today = date.today().strftime("%Y%m%d")
+    def save():
+        STATE.write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
+        events.sort(key=lambda e: (e["record_date"], e["code"]))
+        EVENTS.write_text(json.dumps(events, ensure_ascii=False, indent=0), encoding="utf-8")
+
+    errors = 0
     try:
         cmap = dart.corp_codes()
         # ① 종목별 과거 목록 (한 번만)
         done = set(st["corps_done"])
-        for code in codes:
+        for k, code in enumerate(codes):
             if code in done or code not in cmap:
                 continue
-            rows = [x for x in dart.list({"corp_code": cmap[code], "bgn_de": START, "end_de": today}) if is_div(x)]
+            try:
+                rows = [x for x in dart.list({"corp_code": cmap[code], "bgn_de": START, "end_de": today}) if is_div(x)]
+            except Budget:
+                raise
+            except Exception:
+                errors += 1
+                continue
             st["listed"][code] = [[x["rcept_no"], x["rcept_dt"], x["report_nm"].strip()] for x in rows]
             st["corps_done"].append(code)
             done.add(code)
-        # ② 과거 수집이 끝난 뒤에는 최근 공시만 시장 전체로 훑는다 (3개월 이내 범위 제한)
+            if len(done) % 200 == 0:
+                save()
+                print(f"  목록 {len(done)}/{len(codes)} · 남은 호출 {dart.left}", flush=True)
+        # ② 과거 수집이 끝난 뒤에는 최근 공시만 시장 전체로 훑는다
         if len(done) >= len([c for c in codes if c in cmap]):
             since = st.get("last_scan") or (date.today() - timedelta(days=60)).strftime("%Y%m%d")
             want = set(codes)
@@ -153,27 +179,46 @@ def main() -> int:
                     if x["rcept_no"] not in {r[0] for r in lst}:
                         lst.append([x["rcept_no"], x["rcept_dt"], x["report_nm"].strip()])
             st["last_scan"] = today
-        # ③ 원문 파싱
+        # ③ 원문 파싱 (동시 4개)
+        from concurrent.futures import ThreadPoolExecutor
+
         parsed = set(st["parsed"])
-        for code, rows in st["listed"].items():
-            for rno, rdt, rnm in rows:
-                if rno in parsed:
+        todo = [(code, rno, rdt, rnm) for code, rows in st["listed"].items() for rno, rdt, rnm in rows if rno not in parsed]
+
+        def work(t):
+            try:
+                return t, dart.parse_doc(t[1])
+            except Budget:
+                return t, "budget"
+            except Exception as ex:
+                return t, {"error": type(ex).__name__}
+
+        stop = False
+        with ThreadPoolExecutor(4) as ex:
+            for n, ((code, rno, rdt, rnm), d) in enumerate(ex.map(work, todo), 1):
+                if d == "budget":
+                    stop = True
                     continue
-                d = dart.parse_doc(rno)
+                if d.get("error") and not d.get("record_date"):
+                    errors += 1
                 parsed.add(rno)
                 st["parsed"].append(rno)
-                if d["record_date"] and rno not in seen:
-                    events.append({"code": code, "rcept_no": rno, "disclosed": rdt, "report": rnm, **d})
+                if d.get("record_date") and rno not in seen:
+                    events.append({"code": code, "rcept_no": rno, "disclosed": rdt, "report": rnm,
+                                   **{k: d.get(k) for k in ("dps", "record_date", "kind")}})
                     seen.add(rno)
+                if n % 300 == 0:
+                    save()
+                    print(f"  원문 {n}/{len(todo)} · 이벤트 {len(events)} · 남은 호출 {dart.left}", flush=True)
+        if stop:
+            raise Budget()
     except Budget:
         print("이번 실행 호출·시간 한도 도달 — 저장 후 다음 실행에서 이어서 수집")
     finally:
-        STATE.write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
-        events.sort(key=lambda e: (e["record_date"], e["code"]))
-        EVENTS.write_text(json.dumps(events, ensure_ascii=False, indent=0), encoding="utf-8")
+        save()
     total_listed = sum(len(v) for v in st["listed"].values())
     print(f"종목 {len(st['corps_done'])}/{len(codes)} 목록 완료 · 공시 {total_listed}건 중 {len(st['parsed'])}건 파싱 · "
-          f"이벤트 {len(events)}건 · 남은 호출 {dart.left}")
+          f"이벤트 {len(events)}건 · 남은 호출 {dart.left} · 오류 {errors}건(건너뜀)")
     return 0
 
 
