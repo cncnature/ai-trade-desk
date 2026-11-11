@@ -2,7 +2,188 @@
  "cash": 200000000,
  "start_equity": 200000000,
  "positions": {},
- "pending": [],
+ "pending": [
+  {
+   "code": "034950",
+   "name": "한국기업평가",
+   "qty": 98,
+   "entry_ref": 101300,
+   "stop": 98129,
+   "target": 106057,
+   "hold_days": 10
+  },
+  {
+   "code": "010950",
+   "name": "S-Oil",
+   "qty": 94,
+   "entry_ref": 105400,
+   "stop": 89300,
+   "target": 129550,
+   "hold_days": 10
+  },
+  {
+   "code": "105560",
+   "name": "KB금융",
+   "qty": 65,
+   "entry_ref": 152800,
+   "stop": 140129,
+   "target": 171807,
+   "hold_days": 10
+  },
+  {
+   "code": "003470",
+   "name": "유안타증권",
+   "qty": 2635,
+   "entry_ref": 3795,
+   "stop": 3438,
+   "target": 4331,
+   "hold_days": 10
+  },
+  {
+   "code": "086790",
+   "name": "하나금융지주",
+   "qty": 84,
+   "entry_ref": 118400,
+   "stop": 108014,
+   "target": 133979,
+   "hold_days": 10
+  },
+  {
+   "code": "214150",
+   "name": "클래시스",
+   "qty": 387,
+   "entry_ref": 25800,
+   "stop": 23107,
+   "target": 29839,
+   "hold_days": 10
+  },
+  {
+   "code": "064760",
+   "name": "티씨케이",
+   "qty": 57,
+   "entry_ref": 156700,
+   "stop": 121929,
+   "target": 208857,
+   "hold_days": 10
+  },
+  {
+   "code": "013360",
+   "name": "일성건설",
+   "qty": 7923,
+   "entry_ref": 1262,
+   "stop": 1063,
+   "target": 1560,
+   "hold_days": 10
+  },
+  {
+   "code": "025770",
+   "name": "한국정보통신",
+   "qty": 1308,
+   "entry_ref": 7640,
+   "stop": 6909,
+   "target": 8737,
+   "hold_days": 10
+  },
+  {
+   "code": "094860",
+   "name": "네오리진",
+   "qty": 5511,
+   "entry_ref": 1368,
+   "stop": 1005,
+   "target": 1912,
+   "hold_days": 10
+  },
+  {
+   "code": "192650",
+   "name": "드림텍",
+   "qty": 1722,
+   "entry_ref": 5350,
+   "stop": 4189,
+   "target": 7092,
+   "hold_days": 10
+  },
+  {
+   "code": "055550",
+   "name": "신한지주",
+   "qty": 116,
+   "entry_ref": 85800,
+   "stop": 78421,
+   "target": 96868,
+   "hold_days": 10
+  },
+  {
+   "code": "002960",
+   "name": "한국쉘석유",
+   "qty": 19,
+   "entry_ref": 510000,
+   "stop": 475000,
+   "target": 562500,
+   "hold_days": 10
+  },
+  {
+   "code": "077500",
+   "name": "유니퀘스트",
+   "qty": 738,
+   "entry_ref": 10340,
+   "stop": 7633,
+   "target": 14401,
+   "hold_days": 10
+  },
+  {
+   "code": "145020",
+   "name": "휴젤",
+   "qty": 50,
+   "entry_ref": 198000,
+   "stop": 178486,
+   "target": 227271,
+   "hold_days": 10
+  },
+  {
+   "code": "000810",
+   "name": "삼성화재",
+   "qty": 16,
+   "entry_ref": 601000,
+   "stop": 542000,
+   "target": 689500,
+   "hold_days": 10
+  },
+  {
+   "code": "013870",
+   "name": "지엠비코리아",
+   "qty": 2673,
+   "entry_ref": 3740,
+   "stop": 3370,
+   "target": 4295,
+   "hold_days": 10
+  },
+  {
+   "code": "042110",
+   "name": "에스씨디",
+   "qty": 10810,
+   "entry_ref": 925,
+   "stop": 824,
+   "target": 1076,
+   "hold_days": 10
+  },
+  {
+   "code": "021240",
+   "name": "코웨이",
+   "qty": 100,
+   "entry_ref": 99800,
+   "stop": 90300,
+   "target": 114050,
+   "hold_days": 10
+  },
+  {
+   "code": "012750",
+   "name": "에스원",
+   "qty": 100,
+   "entry_ref": 99200,
+   "stop": 93614,
+   "target": 107579,
+   "hold_days": 10
+  }
+ ],
  "closed": [],
  "curve": [
   {
