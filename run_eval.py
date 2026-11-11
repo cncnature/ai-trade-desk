@@ -53,6 +53,10 @@ def collect(today: str) -> list[dict]:
         if h.get("picks"):
             out.append({"key": "h5", "label": "⑥ H5-v1 외국인 보유율 상위 20%", "horizon": "10d",
                         "items": [{"code": x["code"], "name": x["name"]} for x in h["picks"]]})
+    th = _j(CFG.docs_data_dir / "themes.json") or {}
+    if th.get("day") == today and th.get("leaders"):
+        out.append({"key": "themes", "label": "🔥 어제 강한 테마 대표주 (관찰)", "horizon": "day",
+                    "items": [{"code": x["code"], "name": x["name"]} for x in th["leaders"]]})
     v9 = _j(CFG.docs_data_dir / "v9_morning.json") or {}
     if v9.get("day") == today:
         for s in v9.get("sections", []):

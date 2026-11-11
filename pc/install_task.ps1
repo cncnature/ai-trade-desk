@@ -1,5 +1,6 @@
 # Server PC: register weekday tasks (GitHub's own schedule can lag by hours, so the PC sends the signals)
 #   06:30             AITradeDesk_KickDividends   -> dividends workflow
+#   07:25             AITradeDesk_ThemesExport    Naver themes (domestic only) -> docs/data/themes.json (reference)
 #   07:30/07:50/08:10 AITradeDesk_FlowExport      flow.db -> data/flow -> morning analysis (pushes once, as soon as new flow arrives;
 #                                                 at 08:10 sends a signal with yesterday's flow if none arrived)
 #   07:45/08:00/08:20 AITradeDesk_V9MorningExport morning_pdf.db -> docs/data/v9_morning.json (only when changed)
@@ -12,6 +13,7 @@ $days     = "Monday","Tuesday","Wednesday","Thursday","Friday"
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 20)
 $tasks = @(
   @("AITradeDesk_KickDividends",  "pc\kick.py dividends",      @("06:30")),
+  @("AITradeDesk_ThemesExport",   "pc\export_themes.py",       @("07:25")),
   @("AITradeDesk_FlowExport",     "pc\export_flow.py",         @("07:30","07:50","08:10")),
   @("AITradeDesk_V9MorningExport","pc\export_v9_morning.py",   @("07:45","08:00","08:20")),
   @("AITradeDesk_KickClose",      "pc\kick.py close",          @("16:05")),

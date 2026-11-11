@@ -72,6 +72,17 @@ details summary{cursor:pointer;color:var(--mute);font-size:12px}
     <div class="card" id="briefbox"></div>
   </section>
 
+  <section id="wx" style="display:none">
+    <h2>오늘 증시 날씨 · 매매 판단 근거</h2>
+    <div class="card" id="wxbox"></div>
+  </section>
+
+  <section id="th" style="display:none">
+    <h2>테마 · 순환 · 수급 (관찰, 매매 안 함)</h2>
+    <p class="rule" id="thnote"></p>
+    <div class="cards" id="thbox"></div>
+  </section>
+
   <section id="health">
     <h2>시스템 점검 · 어디가 막혔나</h2>
     <p class="rule">평일 기준 각 단계가 예정 시각까지 오늘 결과를 냈는지 GitHub 기록과 데이터 파일로 확인합니다. 페이지를 열 때마다 다시 점검합니다.</p>
@@ -180,6 +191,30 @@ function renderBrief(b){
   ${b.checks.length?`<div><b>⑤ 점검</b> <span class="meta">${b.checks.map(c=>`${c.st} ${c.name} ${c.note}`).join(' · ')}</span></div>`:''}`;
 }
 fetch('data/brief.json',{cache:'no-store'}).then(r=>r.json()).then(renderBrief).catch(()=>{});
+fetch('data/weather.json',{cache:'no-store'}).then(r=>r.json()).then(w=>{
+  const P=x=>x==null?'—':pct(x*100), m=w.model, kst=new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+  $('wx').style.display='';
+  const col=w.level==='hold'?'var(--down)':w.level==='go'?'var(--ok)':'var(--line)';
+  $('wxbox').style.borderColor=col;
+  $('wxbox').innerHTML=`<div class="top"><div><div class="nm" style="font-size:22px">${w.icon} ${w.name}</div>
+    <div class="cd">${w.date}${w.date!==kst?' · <b class="down">오늘 날씨 아님</b>':''} · 코스피 시가 갭 예상 <b class="${cls(w.pred_gap)}">${P(w.pred_gap)}</b> (간밤 ${w.ewy_day} EWY ${P(w.ewy)})</div></div></div>
+    <div style="font-size:15px"><b>판단:</b> ${w.verdict}</div>${w.notes.map(n=>`<div class="meta">· ${n}</div>`).join('')}
+    <div class="scroll"><table style="border:0"><tr><th>날씨 (확인 구간 ${m.test_from}~${m.test_to})</th><th class="r">일수</th><th class="r">실제 갭</th><th class="r">시가→종가</th><th class="r">t</th><th class="r">시가→종가 플러스</th><th class="r">우리 목록(쌓는 중)</th></tr>
+    ${Object.entries(w.by_weather).map(([k,v])=>{const o=(w.own||{})[k];return `<tr style="${k===w.name?'font-weight:600':''}"><td>${k}${k===w.name?' ← 오늘':''}</td><td class="r num">${v.n}</td><td class="r num">${P(v.gap)}</td><td class="r num ${cls(v.oc)}">${P(v.oc)}</td><td class="r num">${v.t_oc==null?'—':v.t_oc.toFixed(2)}</td><td class="r num">${v.up_oc==null?'—':Math.round(v.up_oc*100)+'%'}</td><td class="r num">${o?`${P(o.mean)} (${o.days}일)`:'—'}</td></tr>`;}).join('')}</table></div>
+    <div class="meta">예측력(모형에 안 쓴 ${m.n_test}일): 갭 방향 적중 ${Math.round(m.hit*100)}% · 상관 ${m.r.toFixed(2)} · 평균 오차 ${(m.mae*100).toFixed(2)}%p · 예상 갭과 시가→종가 상관 ${m.r_oc.toFixed(2)} — 갭만 예상하고 시가 이후 흐름은 예측하지 못합니다.</div>
+    <div class="meta">참고(모형에 안 씀): ${Object.entries(w.ref).map(([k,v])=>v.error?`${k} —`:`${k} ${k==='VIX'?v.close.toFixed(1):''} ${P(v.chg)}`).join(' · ')}</div>`;
+}).catch(()=>{});
+fetch('data/themes.json',{cache:'no-store'}).then(r=>r.json()).then(t=>{
+  $('th').style.display='';
+  $('thnote').textContent=`${t.day} ${String(t.generated).slice(11,16)} 네이버 테마 ${t.n_themes}개 기준 · ${t.note} · 수급은 ${t.flow_day||'—'} 외국인+기관 순매수 금액 합.`;
+  const card=(title,rows,f)=>`<div class="card"><div class="nm">${title}</div>${rows.length?`<div class="scroll"><table style="border:0">${rows.map(f).join('')}</table></div>`:'<div class="meta">없음</div>'}</div>`;
+  const ld=x=>(x.leaders||[]).slice(0,3).map(m=>`${m.name} ${m.chg>0?'+':''}${m.chg}%`).join(', ');
+  $('thbox').innerHTML=
+    card('어제 강한 테마',t.top.slice(0,8),x=>`<tr><td>${x.name}<div class="meta">${ld(x)}</div></td><td class="r num ${cls(x.chg)}">${x.chg>0?'+':''}${x.chg}%</td><td class="r num meta">3일 ${x.chg3??'—'}%</td></tr>`)+
+    card('순환 진입 (상위 10 · 5일 평균 30위 밖)',t.rotation,x=>`<tr><td>${x.name}</td><td class="r num">${x.rank}위</td><td class="r num meta">평균 ${x.prev_avg_rank}위</td></tr>`)+
+    card('수급 몰린 테마 (외국인+기관)',t.flow,x=>`<tr><td>${x.name}<div class="meta">${ld(x)}</div></td><td class="r num ${cls(x.flow_eok)}">${x.flow_eok>0?'+':''}${fmt(x.flow_eok)}억</td></tr>`)+
+    card('오늘 채점할 대표주 (관찰)',t.leaders,x=>`<tr><td>${x.name}<span class="meta num"> ${x.code}</span><div class="meta">${x.theme}</div></td><td class="r num">${qClose(x.code,t.day)}</td><td class="r num">${qChg(x.code,t.day)}</td><td class="r num">${evMark('themes',x.code,t.day)}</td></tr>`);
+}).catch(()=>{});
 const STATUS={'통과':'pass','확인 불통과':'warn','관찰용':'obs','관찰용(자료 부족)':'obs'};
 
 Promise.all([fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()),Qp,Ep]).then(([d])=>{
@@ -379,16 +414,18 @@ async function health(){
   const GH='https://api.github.com/repos/'+REPO;
   const kst=new Date(Date.now()+9*3600e3), today=kst.toISOString().slice(0,10), hm=kst.toISOString().slice(11,16), wd=kst.getUTCDay();
   const J=u=>fetch(u,{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
-  const [runs,flowC,lat,v9,cl,ev]=await Promise.all([J(GH+'/actions/runs?per_page=60'),J(GH+'/commits?path=data/flow&per_page=1'),
-    J('data/latest.json'),J('data/v9_morning.json'),J('data/close.json'),J('data/eval.json')]);
+  const [runs,flowC,lat,v9,cl,ev,wx,th]=await Promise.all([J(GH+'/actions/runs?per_page=60'),J(GH+'/commits?path=data/flow&per_page=1'),
+    J('data/latest.json'),J('data/v9_morning.json'),J('data/close.json'),J('data/eval.json'),J('data/weather.json'),J('data/themes.json')]);
   const lastRun={};(runs&&runs.workflow_runs||[]).forEach(r=>{if(!lastRun[r.name])lastRun[r.name]=r;});
   const kt=t=>t?new Date(new Date(t).getTime()+9*3600e3).toISOString().slice(0,16).replace('T',' '):'—';
   const flowAt=flowC&&flowC[0]?kt(flowC[0].commit.committer.date):null;
   const run=n=>{const r=lastRun[n];return r?{c:r.conclusion||r.status,at:kt(r.created_at),url:r.html_url}:null;};
   const items=[
     {n:'배당 공시 수집',due:'06:40',wf:'dividends',got:null,hint:'저장소 Secrets 에 DART_API_KEY 가 있는지 · 서버 PC 06:30 실행 신호(AITradeDesk_KickDividends)'},
+    {n:'테마 업로드 (서버 PC)',due:'07:40',got:th&&th.day?th.day+' '+String(th.generated||'').slice(11,16):null,hint:'작업 스케줄러 AITradeDesk_ThemesExport(07:25) · 실패 시 서버 PC reports\\theme_debug.html 확인'},
     {n:'서버 PC 수급 업로드',due:'08:20',got:flowAt,hint:'서버 PC가 켜져 로그인돼 있는지 · 작업 스케줄러 AITradeDesk_FlowExport(07:30·07:50·08:10) · 토스 코어 flow.db 갱신(07:20 자동 운영) · git 로그인'},
     {n:'아침 분석 (후보·모의 주문)',due:'08:40',wf:'daily-desk',got:lat&&lat.source!=='synthetic'?kt(lat.generated):null,hint:'서버 PC 수급 업로드가 먼저 와야 바로 시작됨 · 아니면 GitHub 예약(07:50, 지연 잦음)'},
+    {n:'증시 날씨',due:'08:40',got:wx&&wx.date?wx.date+' '+String(wx.generated||'').slice(11,16):null,hint:'아침 분석 로그의 \'증시 날씨 실패\' 줄 확인 (야후 시세 차단 시 stooq 로 대체)'},
     {n:'v9 아침 후보 업로드',due:'08:30',got:v9&&v9.day?v9.day+' '+String(v9.generated||'').slice(11,16):null,hint:'차트 스카우트 아침 PDF(07:50) 생성 여부 · 작업 스케줄러 AITradeDesk_V9MorningExport'},
     {n:'종가 수집',due:'16:20',wf:'close-quotes',got:cl&&cl.day?cl.day:null,hint:'서버 PC 16:05 신호(AITradeDesk_KickClose) 또는 GitHub 예약'},
     {n:'저녁 평가·조언',due:'20:40',wf:'evening-eval',got:ev&&ev.day?ev.day:null,hint:'서버 PC 20:15 신호(AITradeDesk_KickEval) · 오늘 아침 목록이 있어야 채점됨'},

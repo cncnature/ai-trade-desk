@@ -156,6 +156,14 @@ def main() -> int:
     (hist / f"{asof}.json").write_text(json.dumps({"asof": asof, "picks": picks, "passed": val["passed"]},
                                                   ensure_ascii=False))
 
+    if CFG.data_source != "synthetic":
+        try:  # 오늘 증시 날씨 (간밤 EWY → 오늘 코스피 시가 갭 예상, 같은 날씨 날의 시가→종가)
+            from desk import weather
+
+            w = weather.build(src.ohlcv("KOSPI", CFG.history_days), today_kst.strftime("%Y-%m-%d"))
+            (CFG.docs_data_dir / "weather.json").write_text(json.dumps(w, ensure_ascii=False, default=float), encoding="utf-8")
+        except Exception as ex:
+            print(f"증시 날씨 실패: {type(ex).__name__}: {ex}")
     try:  # 아침 브리핑: 어제 평가 요약 + 누적 + 오늘 주문 + 지수 대비 + 점검 (텔레그램 한 통, 대시보드 맨 위 카드)
         from desk import brief
 

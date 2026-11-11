@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from pathlib import Path
@@ -257,3 +258,43 @@ def test_bench_and_brief(monkeypatch):
     out = brief.build(latest)
     t = brief.text(out)
     assert out["yesterday"]["rows"][0]["label"] == "H5" and "판단까지 19일" in t and "코스피만 샀다면 +2.00%" in t
+
+
+def test_weather_offline(monkeypatch):
+    """EWY 간밤 수익률이 갭을 설명하는 합성 자료 — 모형이 계수를 되찾고, 오늘 바는 쓰지 않으며, 표·판단이 나온다."""
+    import numpy as np
+    import pandas as pd
+
+    from desk import brief, weather
+
+    rng = np.random.default_rng(0)
+    d = pd.bdate_range("2021-01-04", periods=900)
+    ewy = pd.Series(100 * np.cumprod(1 + rng.normal(0, 0.015, len(d))), index=d - pd.Timedelta(hours=10))
+    ret = ewy.pct_change().fillna(0).values
+    close = 2500 * np.cumprod(1 + rng.normal(0, 0.01, len(d)))
+    prev = np.r_[close[0], close[:-1]]
+    opn = prev * (1 + 0.6 * ret + rng.normal(0, 0.003, len(d)))
+    k = pd.DataFrame({"open": opn, "high": np.maximum(opn, close) * 1.003, "low": np.minimum(opn, close) * 0.997,
+                      "close": close, "volume": 1e6}, index=d)
+    monkeypatch.setattr(weather, "series", lambda s: ewy if s == "EWY" else pd.Series(dtype=float))
+    CFG.ensure_dirs()
+    today = str(d[-1].date())
+    w = weather.build(k, today)
+    assert 0.5 < w["model"]["b"] < 0.7 and w["model"]["r"] > 0.8 and w["model"]["n_test"] >= 200
+    assert w["date"] == today and w["icon"] and w["by_weather"]
+    assert w["level"] in ("go", "hold", "normal") and w["verdict"]
+    (CFG.docs_data_dir / "weather.json").write_text(json.dumps(w, ensure_ascii=False, default=float), encoding="utf-8")
+    latest = {"asof": str(d[-2].date()), "generated": today + "T07:35+09:00", "paper": PaperBroker(equity=1_000_000).summary(),
+              "picks": [], "validation": {"passed": [], "events": []}, "h5": {}, "telegram": True}
+    assert "오늘 증시 날씨" in brief.text(brief.build(latest))
+
+
+def test_eval_collects_theme_leaders():
+    import run_eval
+
+    CFG.ensure_dirs()
+    (CFG.docs_data_dir / "themes.json").write_text(json.dumps({"day": "2026-11-12", "leaders": [
+        {"code": "000001", "name": "가", "theme": "T", "chg": 5.0}]}, ensure_ascii=False), encoding="utf-8")
+    keys = [L["key"] for L in run_eval.collect("2026-11-12")]
+    assert "themes" in keys
+    assert "themes" not in [L["key"] for L in run_eval.collect("2026-11-13")]

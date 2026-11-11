@@ -33,6 +33,10 @@ def build(latest: dict) -> dict:
     today = str(latest["generated"])[:10]
     ev = _j("eval.json")
     b = {"date": today, "asof": asof, "generated": latest["generated"]}
+    w = _j("weather.json")
+    b["weather"] = w if w and w.get("date") == today else None
+    th = _j("themes.json")
+    b["themes"] = th if th and th.get("day") in (asof, today) else None
 
     # ① 어제 결과 — 직전 거래일 평가만 (더 오래된 평가는 '없음'으로)
     if ev and ev.get("day") == asof:
@@ -94,6 +98,20 @@ def build(latest: dict) -> dict:
 
 def text(b: dict) -> str:
     L = [f"☀️ 아침 브리핑 · {b['date']} (기준일 {b['asof']})"]
+    w = b.get("weather")
+    if w:
+        m = w["model"]
+        L.append(f"\n🌡 오늘 증시 날씨: {w['icon']} {w['name']} — 코스피 시가 갭 예상 {P(w['pred_gap'])} (간밤 EWY {P(w['ewy'])})")
+        L.append(f"판단: {w['verdict']}")
+        L += [f"· {n}" for n in w["notes"]]
+        L.append(f"(예측력: 확인 구간 {m['n_test']}일 방향 적중 {m['hit'] * 100:.0f}% · 상관 {m['r']:.2f} — 갭만 예상, 시가 이후 흐름은 예측 못 함)")
+    th = b.get("themes")
+    if th:
+        L.append("\n🔥 테마 (어제 기준, 관찰): " + " · ".join(f"{t['name']} {t['chg']:+.1f}%" for t in th.get("top", [])[:5]))
+        if th.get("rotation"):
+            L.append("순환 진입: " + " · ".join(t["name"] for t in th["rotation"][:5]))
+        if th.get("flow"):
+            L.append("수급 몰림: " + " · ".join(f"{t['name']}" for t in th["flow"][:5]))
     y = b.get("yesterday")
     if y:
         L.append(f"\n① 어제 결과 ({y['day']}) — 코스피 {P(y['kospi'])} · 코스닥 {P(y['kosdaq'])}")
