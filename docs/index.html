@@ -257,7 +257,7 @@ function renderHolds(P){
       <td class="r num">${fmt(Math.round(p.stop))}${p.stop_src?`<div class="meta">${p.stop_src}</div>`:''}</td>
       <td class="r num">${p.days}/${p.hold_days}</td>
       <td style="white-space:nowrap"><button class="btn" onclick="askPct('TARGET','${c}','${p.name}')">목표 %</button><button class="btn" onclick="askPct('STOP','${c}','${p.name}')">손절 %</button><button class="btn sell" onclick="if(confirm('${p.name} 을(를) 지금 가격에 청산할까요?'))cmd('CLOSE ${c}','${p.name} 지금 가격으로 청산')">청산</button></td></tr>`;}).join('')
-     :`<tr><td colspan="10" class="meta">보유 종목 없음${P.pending.length?` · 내일 시가 매수 대기 ${P.pending.length}종목 (${P.pending.slice(0,6).map(x=>x.name).join(', ')}${P.pending.length>6?' 외':''})`:''}</td></tr>`);
+     :`<tr><td colspan="10" class="meta">보유 종목 없음${P.pending.length?` · 시가 매수 대기 ${P.pending.length}종목 (등록 ${P.pending[0].queued_at||'—'} — 09:00 이후 등록분은 다음 장 시가) (${P.pending.slice(0,6).map(x=>x.name).join(', ')}${P.pending.length>6?' 외':''})`:''}</td></tr>`);
 }
 
 // ⑥ H5-v1 — 이 시스템이 직접 계산 (v9 아침 리포트와 같은 선정), 매일 기록해 10거래일 뒤 자체 채점

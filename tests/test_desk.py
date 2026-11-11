@@ -225,3 +225,14 @@ def test_evening_eval(monkeypatch, tmp_path):
     # 같은 날 다시 돌면 덮어씀
     run_eval.main(Src(), pd.Timestamp("2026-11-11 20:30", tz="Asia/Seoul"))
     assert len(_json.loads((CFG.state_dir / "eval_rows.json").read_text())) == 2
+
+
+def test_late_order_not_filled_at_that_days_open():
+    b = PaperBroker(equity=1_000_000)
+    b.queue([_pick()])
+    b.s["pending"][0]["queued_at"] = "2026-11-11 10:22"
+    bar = {"000001": {"open": 100, "high": 101, "low": 99, "close": 100}}
+    assert not [e for e in b.process_day("2026-11-11", bar, 0.0) if e["type"] == "BUY"]
+    b.queue([_pick()])
+    b.s["pending"][0]["queued_at"] = "2026-11-12 07:40"
+    assert [e for e in b.process_day("2026-11-12", bar, 0.0) if e["type"] == "BUY"]

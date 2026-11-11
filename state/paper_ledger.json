@@ -10,7 +10,8 @@
    "entry_ref": 101300,
    "stop": 98129,
    "target": 106057,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "010950",
@@ -19,7 +20,8 @@
    "entry_ref": 105400,
    "stop": 89300,
    "target": 129550,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "105560",
@@ -28,7 +30,8 @@
    "entry_ref": 152800,
    "stop": 140129,
    "target": 171807,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "003470",
@@ -37,7 +40,8 @@
    "entry_ref": 3795,
    "stop": 3438,
    "target": 4331,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "086790",
@@ -46,7 +50,8 @@
    "entry_ref": 118400,
    "stop": 108014,
    "target": 133979,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "214150",
@@ -55,7 +60,8 @@
    "entry_ref": 25800,
    "stop": 23107,
    "target": 29839,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "064760",
@@ -64,7 +70,8 @@
    "entry_ref": 156700,
    "stop": 121929,
    "target": 208857,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "013360",
@@ -73,7 +80,8 @@
    "entry_ref": 1262,
    "stop": 1063,
    "target": 1560,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "025770",
@@ -82,7 +90,8 @@
    "entry_ref": 7640,
    "stop": 6909,
    "target": 8737,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "094860",
@@ -91,7 +100,8 @@
    "entry_ref": 1368,
    "stop": 1005,
    "target": 1912,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "192650",
@@ -100,7 +110,8 @@
    "entry_ref": 5350,
    "stop": 4189,
    "target": 7092,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "055550",
@@ -109,7 +120,8 @@
    "entry_ref": 85800,
    "stop": 78421,
    "target": 96868,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "002960",
@@ -118,7 +130,8 @@
    "entry_ref": 510000,
    "stop": 475000,
    "target": 562500,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "077500",
@@ -127,7 +140,8 @@
    "entry_ref": 10340,
    "stop": 7633,
    "target": 14401,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "145020",
@@ -136,7 +150,8 @@
    "entry_ref": 198000,
    "stop": 178486,
    "target": 227271,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "000810",
@@ -145,7 +160,8 @@
    "entry_ref": 601000,
    "stop": 542000,
    "target": 689500,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "013870",
@@ -154,7 +170,8 @@
    "entry_ref": 3740,
    "stop": 3370,
    "target": 4295,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "042110",
@@ -163,7 +180,8 @@
    "entry_ref": 925,
    "stop": 824,
    "target": 1076,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "021240",
@@ -172,7 +190,8 @@
    "entry_ref": 99800,
    "stop": 90300,
    "target": 114050,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   },
   {
    "code": "012750",
@@ -181,7 +200,8 @@
    "entry_ref": 99200,
    "stop": 93614,
    "target": 107579,
-   "hold_days": 10
+   "hold_days": 10,
+   "queued_at": "2026-11-11 10:22"
   }
  ],
  "closed": [],

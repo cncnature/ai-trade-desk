@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pandas as pd
+
 from ..config import CFG
 
 
@@ -35,6 +37,9 @@ class PaperBroker:
         half = cost / 2
         # 1) 어제 만든 주문을 오늘 시가로 체결
         for o in self.s["pending"]:
+            # 09:00 이후에 등록된 주문은 그날 시가에 살 수 없었으므로 체결하지 않는다 (다음 장 시가로 다시 등록됨)
+            if o.get("queued_at") and len(day) == 10 and o["queued_at"] >= day + " 09:00":
+                continue
             b = bars.get(o["code"])
             if not b or o["code"] in self.s["positions"]:
                 continue
@@ -140,7 +145,9 @@ class PaperBroker:
                 break
             if p["code"] in self.s["positions"] or p["qty"] <= 0:
                 continue
-            self.s["pending"].append({k: p[k] for k in ("code", "name", "qty", "entry_ref", "stop", "target", "hold_days")})
+            o = {k: p[k] for k in ("code", "name", "qty", "entry_ref", "stop", "target", "hold_days")}
+            o["queued_at"] = pd.Timestamp.now(tz="Asia/Seoul").strftime("%Y-%m-%d %H:%M")
+            self.s["pending"].append(o)
             n += 1
         return n
 
