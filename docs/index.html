@@ -210,7 +210,7 @@ fetch('data/themes.json',{cache:'no-store'}).then(r=>r.json()).then(t=>{
   const card=(title,rows,f)=>`<div class="card"><div class="nm">${title}</div>${rows.length?`<div class="scroll"><table style="border:0">${rows.map(f).join('')}</table></div>`:'<div class="meta">없음</div>'}</div>`;
   const ld=x=>(x.leaders||[]).slice(0,3).map(m=>`${m.name} ${m.chg>0?'+':''}${m.chg}%`).join(', ');
   $('thbox').innerHTML=
-    card('어제 강한 테마',t.top.slice(0,8),x=>`<tr><td>${x.name}<div class="meta">${ld(x)}</div></td><td class="r num ${cls(x.chg)}">${x.chg>0?'+':''}${x.chg}%</td><td class="r num meta">3일 ${x.chg3??'—'}%</td></tr>`)+
+    card('어제 강한 테마',t.top.slice(0,8),x=>`<tr><td>${x.name}<div class="meta">${ld(x)}</div></td><td class="r num ${cls(x.chg)}">${x.chg>0?'+':''}${x.chg}%</td><td class="r num meta">${x.chg3==null?'':'3일 '+x.chg3+'%'}</td></tr>`)+
     card('순환 진입 (상위 10 · 5일 평균 30위 밖)',t.rotation,x=>`<tr><td>${x.name}</td><td class="r num">${x.rank}위</td><td class="r num meta">평균 ${x.prev_avg_rank}위</td></tr>`)+
     card('수급 몰린 테마 (외국인+기관)',t.flow,x=>`<tr><td>${x.name}<div class="meta">${ld(x)}</div></td><td class="r num ${cls(x.flow_eok)}">${x.flow_eok>0?'+':''}${fmt(x.flow_eok)}억</td></tr>`)+
     card('오늘 채점할 대표주 (관찰)',t.leaders,x=>`<tr><td>${x.name}<span class="meta num"> ${x.code}</span><div class="meta">${x.theme}</div></td><td class="r num">${qClose(x.code,t.day)}</td><td class="r num">${qChg(x.code,t.day)}</td><td class="r num">${evMark('themes',x.code,t.day)}</td></tr>`);

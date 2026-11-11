@@ -9,7 +9,8 @@
 
     python pc\\export_themes.py            # 받고 올림
     python pc\\export_themes.py --dry-run  # 받기만
-파싱이 실패하면 reports\\theme_debug.html 에 원본을 남긴다 (그 파일을 보내 주면 맞춰 고침).
+출처: 네이버 모바일 증권 API(m.stock.naver.com/api/stocks/theme) 먼저, 안 되면 옛 PC 테마 페이지.
+실패하면 reports\\theme_probe.txt 에 요청·응답 앞부분을 남긴다 (그 파일을 보내 주면 맞춰 고침).
 """
 from __future__ import annotations
 
@@ -39,27 +40,122 @@ def git(*a: str) -> str:
     return r.stdout.strip()
 
 
-def get(url: str) -> str:
+DBG = REPO / "reports"
+PROBE: list[str] = []          # 실패 시 reports\\theme_probe.txt 로 남길 요청 기록
+
+
+def _fetch(url: str) -> requests.Response | None:
     for i in range(3):
         try:
             r = requests.get(url, headers=UA, timeout=15)
-            r.encoding = "euc-kr"
+            PROBE.append(f"{r.status_code} {url} [{r.headers.get('content-type', '')}] {r.content[:300]!r}")
             if r.status_code == 200:
                 time.sleep(0.2)
-                return r.text
-        except Exception:
-            pass
+                return r
+        except Exception as ex:
+            PROBE.append(f"ERR {url} {type(ex).__name__}: {ex}")
         time.sleep(1.5 * (i + 1))
-    return ""
+    return None
 
 
-def theme_list() -> list[dict]:
+def get(url: str) -> str:
+    """HTML — 문자셋을 응답에서 판단 (네이버 새 페이지는 UTF-8, 옛 페이지는 EUC-KR)."""
+    r = _fetch(url)
+    if r is None:
+        return ""
+    raw = r.content
+    m = re.search(rb'charset=["\']?([\w-]+)', raw[:3000]) or re.search(r"charset=([\w-]+)", r.headers.get("content-type", ""))
+    enc = (m.group(1).decode() if isinstance(m.group(1), bytes) else m.group(1)) if m else "utf-8"
+    return raw.decode(enc, errors="replace")
+
+
+def jget(url: str):
+    r = _fetch(url)
+    if r is None:
+        return None
+    try:
+        return r.json()
+    except Exception:
+        return None
+
+
+def num(x):
+    if x is None:
+        return None
+    try:
+        return float(str(x).replace(",", "").replace("%", "").replace("+", ""))
+    except ValueError:
+        return None
+
+
+def pick(d: dict, *keys):
+    for k in keys:
+        if d.get(k) not in (None, ""):
+            return d[k]
+    return None
+
+
+def rows_of(d, must: tuple[str, ...]) -> list[dict]:
+    """JSON 어디에 있든 must 중 하나를 가진 dict 들의 목록을 찾아 돌려준다 (필드 이름이 바뀌어도 버티게)."""
+    if isinstance(d, list):
+        if d and isinstance(d[0], dict) and any(k in d[0] for k in must):
+            return d
+        for x in d:
+            r = rows_of(x, must)
+            if r:
+                return r
+    elif isinstance(d, dict):
+        for v in d.values():
+            r = rows_of(v, must)
+            if r:
+                return r
+    return []
+
+
+M_API = "https://m.stock.naver.com/api/stocks/theme"
+
+
+def theme_list_api() -> list[dict]:
+    out, seen = [], set()
+    for page in range(1, 11):
+        d = jget(f"{M_API}?page={page}&pageSize=100")
+        rows = rows_of(d, ("no", "themeNo", "themeId")) if d is not None else []
+        n0 = len(out)
+        for g in rows:
+            no = str(pick(g, "no", "themeNo", "themeId", "id") or "")
+            chg = num(pick(g, "changeRate", "fluctuationsRatio", "changeRatio", "rate"))
+            if not no or no in seen or chg is None:
+                continue
+            seen.add(no)
+            out.append({"no": no, "name": str(pick(g, "name", "themeName", "groupName") or no).strip(), "chg": chg,
+                        "chg3": num(pick(g, "threeDaysChangeRate", "changeRate3d", "recent3DaysChangeRate")),
+                        "up": pick(g, "riseCount", "upCount"), "flat": pick(g, "steadyCount", "flatCount"),
+                        "down": pick(g, "fallCount", "downCount")})
+        if len(out) == n0:
+            break
+    return out
+
+
+def members_api(no: str) -> list[dict]:
+    d = jget(f"{M_API}/{no}?page=1&pageSize=100")
+    out, seen = [], set()
+    for x in rows_of(d, ("itemCode", "stockCode", "reutersCode")) if d is not None else []:
+        code = str(pick(x, "itemCode", "stockCode", "reutersCode") or "")[:6]
+        if not re.fullmatch(r"\d{6}", code) or code in seen:
+            continue
+        seen.add(code)
+        out.append({"code": code, "name": str(pick(x, "stockName", "itemName", "name") or code).strip(),
+                    "chg": num(pick(x, "fluctuationsRatio", "changeRate", "changeRatio"))})
+    return out
+
+
+def theme_list_html() -> list[dict]:
+    """옛 PC 페이지 (sise/theme.naver) — 새 페이지로 바뀌어 비면 빈 목록."""
     out, seen = [], set()
     for page in range(1, 9):
         html = get(f"https://finance.naver.com/sise/theme.naver?&page={page}")
-        rows = re.findall(r"<tr[^>]*>(.*?)</tr>", html, re.S)
         n0 = len(out)
-        for row in rows:
+        for row in re.findall(r"<tr[^>]*>(.*?)</tr>", html, re.S):
             m = re.search(r'sise_group_detail\.naver\?type=theme&(?:amp;)?no=(\d+)"[^>]*>([^<]+)</a>', row)
             if not m or m.group(1) in seen:
                 continue
@@ -74,14 +170,13 @@ def theme_list() -> list[dict]:
                         "down": nums[2] if len(nums) > 2 else None})
         if len(out) == n0:
             if page == 1:
-                dbg = REPO / "reports"
-                dbg.mkdir(exist_ok=True)
-                (dbg / "theme_debug.html").write_text(html, encoding="utf-8")
+                DBG.mkdir(exist_ok=True)
+                (DBG / "theme_debug.html").write_text(html, encoding="utf-8")
             break
     return out
 
 
-def members(no: str) -> list[dict]:
+def members_html(no: str) -> list[dict]:
     html = get(f"https://finance.naver.com/sise/sise_group_detail.naver?type=theme&no={no}")
     out, seen = [], set()
     for row in re.findall(r"<tr[^>]*>(.*?)</tr>", html, re.S):
@@ -92,6 +187,21 @@ def members(no: str) -> list[dict]:
         pcts = [float(x) for x in PCT.findall(re.sub(r"<[^>]+>", " ", row))]
         out.append({"code": m.group(1), "name": m.group(2).strip(), "chg": pcts[0] if pcts else None})
     return out
+
+
+SRC = {"list": None}
+
+
+def theme_list() -> list[dict]:
+    """네이버 모바일 증권 API 먼저, 안 되면 옛 PC 페이지."""
+    t = theme_list_api()
+    SRC["list"] = "api" if t else "html"
+    return t or theme_list_html()
+
+
+def members(no: str) -> list[dict]:
+    m = members_api(no) if SRC["list"] == "api" else []
+    return m or members_html(no)
 
 
 def flow_sum(db: Path, codes: list[str]) -> tuple[float | None, str | None]:
@@ -123,7 +233,10 @@ def main() -> int:
         git("pull", "--rebase", "-q", "origin", "main")
     themes = theme_list()
     if not themes:
-        sys.exit("[중단] 테마 목록을 읽지 못했습니다 — reports\\theme_debug.html 을 보내 주세요.")
+        DBG.mkdir(exist_ok=True)
+        (DBG / "theme_probe.txt").write_text("\n".join(PROBE), encoding="utf-8")
+        sys.exit("[중단] 테마 목록을 읽지 못했습니다 — reports\\theme_probe.txt 를 보내 주세요.")
+    print(f"테마 목록 출처: {SRC['list']}")
     by_chg = sorted(themes, key=lambda t: t["chg"], reverse=True)
     rank = {t["no"]: i + 1 for i, t in enumerate(by_chg)}
     hist = json.loads(HIST.read_text(encoding="utf-8")) if HIST.exists() else {}
@@ -154,7 +267,8 @@ def main() -> int:
                 leaders.append({"code": m["code"], "name": m["name"], "theme": t["name"], "chg": m["chg"]})
     out = {"day": day, "generated": datetime.now().strftime("%Y-%m-%d %H:%M"), "n_themes": len(themes),
            "note": "네이버 테마 전일 등락 기준 관찰 목록 — 테마 추종이 통한다는 검증은 아직 없음 (저녁 평가로 채점 중)",
-           "top": top, "top3d": sorted(detail, key=lambda t: t["chg3"] or -99, reverse=True)[:8],
+           "top": top, "source": SRC["list"],
+           "top3d": sorted([t for t in detail if t["chg3"] is not None], key=lambda t: t["chg3"], reverse=True)[:8],
            "rotation": rotation, "flow_day": flow_day,
            "flow": sorted([t for t in detail if t["flow_eok"] is not None], key=lambda t: t["flow_eok"], reverse=True)[:8],
            "leaders": leaders[:10]}
