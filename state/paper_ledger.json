@@ -6,209 +6,217 @@
   {
    "code": "034950",
    "name": "한국기업평가",
-   "qty": 98,
-   "entry_ref": 101300,
-   "stop": 98129,
-   "target": 106057,
+   "qty": 99,
+   "entry_ref": 100600,
+   "stop": 97357,
+   "target": 105464,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "010950",
    "name": "S-Oil",
-   "qty": 94,
-   "entry_ref": 105400,
-   "stop": 89300,
-   "target": 129550,
+   "qty": 95,
+   "entry_ref": 105200,
+   "stop": 90286,
+   "target": 127571,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "105560",
    "name": "KB금융",
    "qty": 65,
-   "entry_ref": 152800,
-   "stop": 140129,
-   "target": 171807,
+   "entry_ref": 153300,
+   "stop": 140571,
+   "target": 172393,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "003470",
    "name": "유안타증권",
-   "qty": 2635,
-   "entry_ref": 3795,
-   "stop": 3438,
-   "target": 4331,
+   "qty": 2500,
+   "entry_ref": 4000,
+   "stop": 3631,
+   "target": 4553,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "086790",
    "name": "하나금융지주",
-   "qty": 84,
-   "entry_ref": 118400,
-   "stop": 108014,
-   "target": 133979,
+   "qty": 83,
+   "entry_ref": 119200,
+   "stop": 108857,
+   "target": 134714,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "214150",
    "name": "클래시스",
-   "qty": 387,
-   "entry_ref": 25800,
-   "stop": 23107,
-   "target": 29839,
+   "qty": 392,
+   "entry_ref": 25500,
+   "stop": 22686,
+   "target": 29721,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "064760",
    "name": "티씨케이",
-   "qty": 57,
-   "entry_ref": 156700,
-   "stop": 121929,
-   "target": 208857,
+   "qty": 55,
+   "entry_ref": 181700,
+   "stop": 145514,
+   "target": 235979,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "013360",
    "name": "일성건설",
-   "qty": 7923,
-   "entry_ref": 1262,
-   "stop": 1063,
-   "target": 1560,
+   "qty": 7639,
+   "entry_ref": 1309,
+   "stop": 1108,
+   "target": 1611,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "025770",
    "name": "한국정보통신",
-   "qty": 1308,
-   "entry_ref": 7640,
-   "stop": 6909,
-   "target": 8737,
+   "qty": 1324,
+   "entry_ref": 7550,
+   "stop": 6831,
+   "target": 8628,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "094860",
    "name": "네오리진",
-   "qty": 5511,
-   "entry_ref": 1368,
-   "stop": 1005,
-   "target": 1912,
+   "qty": 5553,
+   "entry_ref": 1346,
+   "stop": 986,
+   "target": 1886,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "192650",
    "name": "드림텍",
-   "qty": 1722,
-   "entry_ref": 5350,
-   "stop": 4189,
-   "target": 7092,
+   "qty": 1706,
+   "entry_ref": 5860,
+   "stop": 4691,
+   "target": 7613,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "055550",
    "name": "신한지주",
    "qty": 116,
-   "entry_ref": 85800,
-   "stop": 78421,
-   "target": 96868,
+   "entry_ref": 85600,
+   "stop": 78307,
+   "target": 96539,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "002960",
    "name": "한국쉘석유",
    "qty": 19,
-   "entry_ref": 510000,
-   "stop": 475000,
-   "target": 562500,
+   "entry_ref": 509000,
+   "stop": 476000,
+   "target": 558500,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "077500",
    "name": "유니퀘스트",
-   "qty": 738,
-   "entry_ref": 10340,
-   "stop": 7633,
-   "target": 14401,
+   "qty": 750,
+   "entry_ref": 12380,
+   "stop": 9716,
+   "target": 16376,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "145020",
    "name": "휴젤",
    "qty": 50,
-   "entry_ref": 198000,
-   "stop": 178486,
-   "target": 227271,
+   "entry_ref": 196600,
+   "stop": 176929,
+   "target": 226107,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "000810",
    "name": "삼성화재",
-   "qty": 16,
-   "entry_ref": 601000,
-   "stop": 542000,
-   "target": 689500,
+   "qty": 17,
+   "entry_ref": 568000,
+   "stop": 506143,
+   "target": 660786,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "013870",
    "name": "지엠비코리아",
-   "qty": 2673,
-   "entry_ref": 3740,
-   "stop": 3370,
-   "target": 4295,
+   "qty": 2684,
+   "entry_ref": 3725,
+   "stop": 3361,
+   "target": 4271,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "042110",
    "name": "에스씨디",
-   "qty": 10810,
-   "entry_ref": 925,
-   "stop": 824,
-   "target": 1076,
+   "qty": 10787,
+   "entry_ref": 927,
+   "stop": 822,
+   "target": 1084,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "021240",
    "name": "코웨이",
-   "qty": 100,
-   "entry_ref": 99800,
-   "stop": 90300,
-   "target": 114050,
+   "qty": 98,
+   "entry_ref": 101500,
+   "stop": 91686,
+   "target": 116221,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   },
   {
    "code": "012750",
    "name": "에스원",
-   "qty": 100,
-   "entry_ref": 99200,
-   "stop": 93614,
-   "target": 107579,
+   "qty": 101,
+   "entry_ref": 98200,
+   "stop": 92371,
+   "target": 106943,
    "hold_days": 10,
-   "queued_at": "2026-11-11 10:22"
+   "queued_at": "2026-11-12 08:02"
   }
  ],
  "closed": [],
  "curve": [
   {
    "date": "2026-11-10",
-   "equity": 200000000
+   "equity": 200000000,
+   "kospi": 5239.13,
+   "kosdaq": 667.61
+  },
+  {
+   "date": "2026-11-11",
+   "equity": 200000000,
+   "kospi": 5375.36,
+   "kosdaq": 705.1
   }
  ],
  "rules": {
