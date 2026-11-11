@@ -21,6 +21,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: main   # 줄 서서 기다린 실행도 최신 장부에서 시작 (트리거 시점 커밋 아님)
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
