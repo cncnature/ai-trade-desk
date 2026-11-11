@@ -162,4 +162,29 @@ class PaperBroker:
             "avg_ret_pct": round(sum(c["ret_pct"] for c in closed) / len(closed), 2) if closed else None,
             "positions": self.s["positions"], "pending": self.s["pending"], "rules": self.rules(),
             "recent": closed[-15:][::-1], "curve": self.s["curve"][-250:],
+            "bench": self.bench(),
         }
+
+    def mark_index(self, kospi: dict, kosdaq: dict) -> None:
+        """곡선의 각 날짜에 코스피·코스닥 종가를 남긴다 (지수 기준선용). kospi/kosdaq: 'YYYY-MM-DD' → 종가"""
+        for c in self.s["curve"]:
+            if c.get("kospi") is None and c["date"] in kospi:
+                c["kospi"] = kospi[c["date"]]
+            if c.get("kosdaq") is None and c["date"] in kosdaq:
+                c["kosdaq"] = kosdaq[c["date"]]
+
+    def bench(self) -> dict | None:
+        """같은 시작 자산으로 시작일 종가에 지수를 샀다면 (코스피만 = KODEX 200 근사, 코스피·코스닥 반반).
+        지수는 첫날부터 전액 투자·비용 없음 가정 — 이 시스템에 불리한 쪽으로 엄격한 비교."""
+        cv = [c for c in self.s["curve"] if c.get("kospi") and c.get("kosdaq")]
+        if not cv:
+            return None
+        k0, q0, e0 = cv[0]["kospi"], cv[0]["kosdaq"], self.s["start_equity"]
+        pts = [{"date": c["date"], "equity": c["equity"], "kospi": round(e0 * c["kospi"] / k0),
+                "mix": round(e0 * (0.5 * c["kospi"] / k0 + 0.5 * c["kosdaq"] / q0))} for c in cv]
+        last = pts[-1]
+        return {"from": cv[0]["date"], "points": pts[-250:],
+                "kospi_ret_pct": round((last["kospi"] / e0 - 1) * 100, 2),
+                "mix_ret_pct": round((last["mix"] / e0 - 1) * 100, 2),
+                "vs_kospi_pct": round((last["equity"] - last["kospi"]) / e0 * 100, 2),
+                "vs_mix_pct": round((last["equity"] - last["mix"]) / e0 * 100, 2)}

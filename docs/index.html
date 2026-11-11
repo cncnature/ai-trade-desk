@@ -43,6 +43,7 @@ td.r,th.r{text-align:right}
 .st{font-weight:600}.st.pass{color:var(--ok)}.st.fail{color:var(--mute)}.st.obs{color:var(--mute);font-weight:400;font-style:italic}.st.warn{color:var(--warn)}
 .scroll{overflow-x:auto}
 .cards#v9m{grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr))}
+#briefbox>div{margin:4px 0;font-size:14px}
 .advice{margin:0 0 12px;padding-left:18px;font-size:14px}.advice li{margin:4px 0}
 details summary{cursor:pointer;color:var(--mute);font-size:12px}
 .btn{font:600 12px "IBM Plex Sans KR",sans-serif;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:3px 9px;cursor:pointer;margin-left:4px}
@@ -65,6 +66,11 @@ details summary{cursor:pointer;color:var(--mute);font-size:12px}
     <a class="badge" id="hchip" href="#health" style="text-decoration:none">점검 중…</a>
   </header>
   <div class="strip" id="market"></div>
+
+  <section id="brief" style="display:none">
+    <h2>아침 브리핑</h2>
+    <div class="card" id="briefbox"></div>
+  </section>
 
   <section id="health">
     <h2>시스템 점검 · 어디가 막혔나</h2>
@@ -152,6 +158,28 @@ function spark(cv,arr,color){
   c.strokeStyle=color;c.lineWidth=1.5;c.beginPath();arr.forEach((v,i)=>i?c.lineTo(i*sx,sy(v)):c.moveTo(0,sy(v)));c.stroke();
 }
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function lines(cv,series){  // 같은 축에 여러 선 + 범례
+  const r=devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;cv.width=w*r;cv.height=h*r;
+  const c=cv.getContext('2d');c.scale(r,r);const all=series.flatMap(s=>s[0]);const mn=Math.min(...all),mx=Math.max(...all);
+  const n=series[0][0].length,sx=w/Math.max(1,n-1),sy=v=>h-14-(v-mn)/((mx-mn)||1)*(h-24);
+  series.forEach(([a,col,name],k)=>{c.strokeStyle=col;c.lineWidth=k?1.2:2;c.setLineDash(k?[4,3]:[]);c.beginPath();
+    a.forEach((v,i)=>i?c.lineTo(i*sx,sy(v)):c.moveTo(0,sy(v)));c.stroke();
+    c.setLineDash([]);c.fillStyle=col;c.font='11px IBM Plex Sans KR,sans-serif';c.fillText(name,4+k*80,h-2);});
+}
+function renderBrief(b){
+  if(!b) return; const P=x=>x==null?'—':pct(x*100);
+  const kst=new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+  $('brief').style.display=''; const y=b.yesterday, pp=b.paper, bn=pp.bench||{};
+  $('briefbox').innerHTML=`<div class="top"><div><div class="nm">☀️ ${b.date} 아침 브리핑</div><div class="cd">기준일 ${b.asof} · ${String(b.generated).slice(11,16)} 생성${b.date!==kst?' · <b class="down">오늘 브리핑 아님</b>':''}</div></div></div>
+  <div><b>① 어제 결과</b> ${y?`(${y.day}) · 코스피 ${P(y.kospi)} · 코스닥 ${P(y.kosdaq)}`:'— 직전 거래일 평가 없음'}</div>
+  ${y&&y.rows.length?`<div class="scroll"><table style="border:0"><tr><th>목록</th><th class="r">시가→종가</th><th class="r">맞음</th><th class="r">지수 대비</th></tr>${y.rows.map(r=>`<tr><td>${r.label}</td><td class="r num ${cls(r.mean)}">${P(r.mean)}</td><td class="r num">${Math.round(r.hit*100)}%</td><td class="r num ${cls(r.ex_idx)}">${P(r.ex_idx)}</td></tr>`).join('')}</table></div><div class="meta">지수 대비 가장 나음: ${y.best} · 가장 나쁨: ${y.worst} — 하루 결과라 결론 아님</div>`:''}
+  ${b.cumulative.length?`<div><b>② 누적 판단</b></div><div class="meta">${b.cumulative.map(c=>`${c.label} ${c.days}일 평균 ${P(c.mean)}${c.t!=null?` (t ${c.t.toFixed(2)})`:''} — ${c.left?`판단까지 ${c.left}일`:c.verdict}`).join('<br>')}</div>`:''}
+  <div><b>③ 모의 계좌</b> ${fmt(pp.equity)}원 <span class="${cls(pp.ret_pct)}">${pct(pp.ret_pct)}</span>${bn.kospi_ret_pct!=null?` · 코스피만 샀다면 ${pct(bn.kospi_ret_pct)} (차이 <span class="${cls(bn.vs_kospi_pct)}">${pct(bn.vs_kospi_pct)}p</span>) · 반반 ${pct(bn.mix_ret_pct)}`:''}<br>
+  <span class="meta">보유 ${pp.positions}종목 · 오늘 시가 주문 ${pp.pending.length}종목${pp.rules.target_pct?` · 전체 목표 +${pp.rules.target_pct}%`:''}${pp.rules.stop_pct?` · 전체 손절 -${Math.abs(pp.rules.stop_pct)}%`:''}${pp.pending.length?' — '+pp.pending.slice(0,8).join(', ')+(pp.pending.length>8?' 외':''):''}</span></div>
+  <div><b>④ 오늘 후보</b> ${b.picks.n}종목 (검정 통과: ${b.picks.passed.join(', ')||'없음'}) <span class="meta">${b.picks.top.join(', ')}${b.h5&&b.h5.length?' · H5 참고: '+b.h5.join(', '):''}</span></div>
+  ${b.checks.length?`<div><b>⑤ 점검</b> <span class="meta">${b.checks.map(c=>`${c.st} ${c.name} ${c.note}`).join(' · ')}</span></div>`:''}`;
+}
+fetch('data/brief.json',{cache:'no-store'}).then(r=>r.json()).then(renderBrief).catch(()=>{});
 const STATUS={'통과':'pass','확인 불통과':'warn','관찰용':'obs','관찰용(자료 부족)':'obs'};
 
 Promise.all([fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()),Qp,Ep]).then(([d])=>{
@@ -195,9 +223,11 @@ Promise.all([fetch('data/latest.json',{cache:'no-store'}).then(r=>r.json()),Qp,E
     <td class="r num">${r.confirm?.uses??'—'}</td><td class="r num">—</td><td class="r num">${f2(r.weight)}</td></tr>`).join('');
 
   const P=d.paper;
-  $('kpis').innerHTML=[['평가 자산',fmt(P.equity)+'원'],['누적 수익',`<span class="${cls(P.total_ret_pct)}">${pct(P.total_ret_pct)}</span>`],['청산 건수',P.trades],['승률',P.win_rate==null?'—':P.win_rate+'%'],['평균 수익',pct(P.avg_ret_pct)],['보유/대기',Object.keys(P.positions).length+' / '+P.pending.length]]
+  $('kpis').innerHTML=[['평가 자산',fmt(P.equity)+'원'],['누적 수익',`<span class="${cls(P.total_ret_pct)}">${pct(P.total_ret_pct)}</span>`],['청산 건수',P.trades],['승률',P.win_rate==null?'—':P.win_rate+'%'],['평균 수익',pct(P.avg_ret_pct)],['보유/대기',Object.keys(P.positions).length+' / '+P.pending.length],['코스피만 샀다면',P.bench?`${pct(P.bench.kospi_ret_pct)} <span class="meta">(차이 <span class="${cls(P.bench.vs_kospi_pct)}">${pct(P.bench.vs_kospi_pct)}p</span>)</span>`:'—'],['코스피·코스닥 반반',P.bench?`${pct(P.bench.mix_ret_pct)} <span class="meta">(차이 <span class="${cls(P.bench.vs_mix_pct)}">${pct(P.bench.vs_mix_pct)}p</span>)</span>`:'—']]
     .map(([k,x])=>`<div class="kpi"><span>${k}</span><b class="num">${x}</b></div>`).join('');
-  if(P.curve.length>1)spark($('curve'),P.curve.map(c=>c.equity),css('--ink'));else $('curve').style.display='none';
+  const BP=(P.bench&&P.bench.points)||[];
+  if(BP.length>1) lines($('curve'),[[BP.map(x=>x.equity),css('--ink'),'모의 계좌'],[BP.map(x=>x.kospi),css('--down'),'코스피만'],[BP.map(x=>x.mix),css('--mute'),'반반']]);
+  else if(P.curve.length>1) spark($('curve'),P.curve.map(c=>c.equity),css('--ink')); else $('curve').style.display='none';
   renderHolds(P);
   $('trades').innerHTML='<tr><th>종목</th><th>진입</th><th>청산</th><th class="r">진입가</th><th class="r">청산가</th><th class="r">수익</th><th>사유</th></tr>'+
     (P.recent.length?P.recent.map(t=>`<tr><td>${t.name}</td><td class="num">${t.entry_date}</td><td class="num">${t.exit_date}</td><td class="r num">${fmt(t.entry)}</td><td class="r num">${fmt(t.exit)}</td><td class="r num ${cls(t.ret_pct)}">${pct(t.ret_pct)}</td><td>${t.reason}</td></tr>`).join('')

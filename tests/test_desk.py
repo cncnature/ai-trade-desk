@@ -236,3 +236,24 @@ def test_late_order_not_filled_at_that_days_open():
     b.queue([_pick()])
     b.s["pending"][0]["queued_at"] = "2026-11-12 07:40"
     assert [e for e in b.process_day("2026-11-12", bar, 0.0) if e["type"] == "BUY"]
+
+
+def test_bench_and_brief(monkeypatch):
+    import json as _json
+
+    from desk import brief
+
+    b = PaperBroker(equity=200_000_000)
+    b.s["curve"] = [{"date": "2026-11-10", "equity": 200_000_000}, {"date": "2026-11-11", "equity": 201_000_000}]
+    b.mark_index({"2026-11-10": 5000.0, "2026-11-11": 5100.0}, {"2026-11-10": 650.0, "2026-11-11": 682.5})
+    bn = b.bench()
+    assert bn["kospi_ret_pct"] == 2.0 and bn["mix_ret_pct"] == 3.5 and bn["vs_kospi_pct"] == -1.5
+    CFG.ensure_dirs()
+    (CFG.docs_data_dir / "eval.json").write_text(_json.dumps({"day": "2026-11-11", "market": {"KOSPI": {"chg": 0.02}, "KOSDAQ": {"chg": 0.05}},
+        "lists": [{"key": "h5", "label": "H5", "today": {"n": 10, "mean": 0.039, "hit": 0.8, "ex_idx": 0.0098},
+                   "cum": {"days": 1, "mean": 0.039, "t": None, "ex_idx": 0.0098}, "verdict": "표본 1일"}]}))
+    latest = {"asof": "2026-11-11", "generated": "2026-11-12T07:35+09:00", "paper": b.summary(), "picks": [{"name": "A"}],
+              "validation": {"passed": ["frgn_hold"], "events": []}, "h5": {"picks": [{"name": "B"}]}, "telegram": True}
+    out = brief.build(latest)
+    t = brief.text(out)
+    assert out["yesterday"]["rows"][0]["label"] == "H5" and "판단까지 19일" in t and "코스피만 샀다면 +2.00%" in t

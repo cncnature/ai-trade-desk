@@ -128,6 +128,9 @@ def main() -> int:
     paper.s["pending"] = []
     paper.queue(picks)
     paper.save()
+    paper.mark_index({d.strftime("%Y-%m-%d"): float(v) for d, v in kospi.items()},
+                      {d.strftime("%Y-%m-%d"): float(v) for d, v in kosdaq.items()})
+    paper.save()
     psum = paper.summary()
     try:  # 참고 칸: H5-v1 외국인 보유율 상위 20% (v9 아침 리포트와 같은 선정) + 자체 채점
         h5res = h5.run(panel, names, kospi.shift(-CFG.hold_days) / kospi - 1)
@@ -153,7 +156,15 @@ def main() -> int:
     (hist / f"{asof}.json").write_text(json.dumps({"asof": asof, "picks": picks, "passed": val["passed"]},
                                                   ensure_ascii=False))
 
-    msg = notify.daily_message(asof, val, picks, psum, events)
+    try:  # 아침 브리핑: 어제 평가 요약 + 누적 + 오늘 주문 + 지수 대비 + 점검 (텔레그램 한 통, 대시보드 맨 위 카드)
+        from desk import brief
+
+        b = brief.build(out)
+        (CFG.docs_data_dir / "brief.json").write_text(json.dumps(b, ensure_ascii=False, default=float), encoding="utf-8")
+        msg = brief.text(b)
+    except Exception as ex:
+        print(f"아침 브리핑 실패 — 기존 메시지로 대신: {type(ex).__name__}: {ex}")
+        msg = notify.daily_message(asof, val, picks, psum, events)
     if args.no_notify:
         print(msg)
     else:
