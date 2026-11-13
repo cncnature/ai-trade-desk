@@ -36,6 +36,6 @@ jobs:
         run: |
           git config user.name "desk-bot"
           git config user.email "desk-bot@users.noreply.github.com"
-          git add reports docs/data/streak_test.json 2>/dev/null || true
+          git add reports || true
           git diff --cached --quiet || git commit -m "research: ${{ inputs.script }}"
           git pull --rebase -q origin main && git push || true
