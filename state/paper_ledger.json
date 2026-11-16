@@ -1,5 +1,5 @@
 {
- "cash": 76021762.58162513,
+ "cash": 36971684.2216026,
  "start_equity": 200000000,
  "positions": {
   "034950": {
@@ -7,254 +7,270 @@
    "qty": 99,
    "entry": 100000.0,
    "entry_date": "2026-11-12",
-   "days": 2,
+   "days": 3,
    "stop": 96776.34194831015,
    "target": 105000.0,
    "hold_days": 10,
    "atr_target": 104834.99005964215,
    "atr_stop": 96776.34194831015,
    "target_src": "전체 +5%",
-   "last": 100000.0
+   "last": 99800.0
   },
   "010950": {
    "name": "S-Oil",
    "qty": 95,
    "entry": 105100.0,
    "entry_date": "2026-11-12",
-   "days": 2,
+   "days": 3,
    "stop": 90200.17680608365,
    "target": 110355.0,
    "hold_days": 10,
    "atr_target": 127449.73479087453,
    "atr_stop": 90200.17680608365,
    "target_src": "전체 +5%",
-   "last": 104600.0
+   "last": 106400.0
   },
   "105560": {
    "name": "KB금융",
    "qty": 64,
    "entry": 154800.0,
    "entry_date": "2026-11-12",
-   "days": 2,
+   "days": 3,
    "stop": 141946.45009784735,
    "target": 162540.0,
    "hold_days": 10,
    "atr_target": 174079.81996086106,
    "atr_stop": 141946.45009784735,
    "target_src": "전체 +5%",
-   "last": 158000.0
+   "last": 161700.0
   },
   "003470": {
    "name": "유안타증권",
    "qty": 2500,
    "entry": 3935.0,
    "entry_date": "2026-11-12",
-   "days": 2,
+   "days": 3,
    "stop": 3571.99625,
    "target": 4131.75,
    "hold_days": 10,
    "atr_target": 4479.01375,
    "atr_stop": 3571.99625,
    "target_src": "전체 +5%",
-   "last": 3925.0
+   "last": 3745.0
   },
   "086790": {
    "name": "하나금융지주",
    "qty": 82,
    "entry": 121000.0,
    "entry_date": "2026-11-12",
-   "days": 2,
+   "days": 3,
    "stop": 110500.81375838927,
    "target": 127050.0,
    "hold_days": 10,
    "atr_target": 136748.27181208055,
    "atr_stop": 110500.81375838927,
    "target_src": "전체 +5%",
-   "last": 124100.0
+   "last": 126800.0
   },
   "025770": {
    "name": "한국정보통신",
    "qty": 1317,
    "entry": 7590.0,
    "entry_date": "2026-11-12",
-   "days": 2,
+   "days": 3,
    "stop": 6867.190728476821,
    "target": 7969.5,
    "hold_days": 10,
    "atr_target": 8673.711258278146,
    "atr_stop": 6867.190728476821,
    "target_src": "전체 +5%",
-   "last": 7690.0
+   "last": 7720.0
   },
   "055550": {
    "name": "신한지주",
    "qty": 115,
    "entry": 86800.0,
    "entry_date": "2026-11-12",
-   "days": 2,
+   "days": 3,
    "stop": 79404.76168224298,
    "target": 91140.0,
    "hold_days": 10,
    "atr_target": 97892.35046728973,
    "atr_stop": 79404.76168224298,
    "target_src": "전체 +5%",
-   "last": 89800.0
+   "last": 90900.0
   },
   "145020": {
    "name": "휴젤",
    "qty": 50,
    "entry": 194100.0,
    "entry_date": "2026-11-12",
-   "days": 2,
+   "days": 3,
    "stop": 174679.13987792472,
    "target": 203805.0,
    "hold_days": 10,
    "atr_target": 223231.78382502543,
    "atr_stop": 174679.13987792472,
    "target_src": "전체 +5%",
-   "last": 192700.0
+   "last": 192600.0
   },
   "000810": {
    "name": "삼성화재",
    "qty": 17,
    "entry": 563000.0,
    "entry_date": "2026-11-12",
-   "days": 2,
+   "days": 3,
    "stop": 501687.5158450704,
    "target": 591150.0,
    "hold_days": 10,
    "atr_target": 654969.2218309859,
    "atr_stop": 501687.5158450704,
    "target_src": "전체 +5%",
-   "last": 528000.0
-  },
-  "021240": {
-   "name": "코웨이",
-   "qty": 98,
-   "entry": 101400.0,
-   "entry_date": "2026-11-12",
-   "days": 2,
-   "stop": 91595.66896551724,
-   "target": 106470.0,
-   "hold_days": 10,
-   "atr_target": 116106.49655172414,
-   "atr_stop": 91595.66896551724,
-   "target_src": "전체 +5%",
-   "last": 102600.0
+   "last": 543000.0
   },
   "012750": {
    "name": "에스원",
    "qty": 100,
    "entry": 99500.0,
    "entry_date": "2026-11-12",
-   "days": 2,
+   "days": 3,
    "stop": 93593.83401221996,
    "target": 104475.0,
    "hold_days": 10,
    "atr_target": 108358.74236252546,
    "atr_stop": 93593.83401221996,
    "target_src": "전체 +5%",
-   "last": 100900.0
+   "last": 102600.0
   },
   "094860": {
    "name": "네오리진",
    "qty": 5147,
    "entry": 1350.0,
    "entry_date": "2026-11-13",
-   "days": 1,
+   "days": 2,
    "stop": 964.1440117560617,
    "target": 1417.5,
    "hold_days": 10,
    "atr_target": 1928.2880235121233,
    "atr_stop": 964.1440117560617,
    "target_src": "전체 +5%",
-   "last": 1321.0
+   "last": 1249.0
   },
   "042110": {
    "name": "에스씨디",
    "qty": 10504,
    "entry": 952.0,
    "entry_date": "2026-11-13",
-   "days": 1,
+   "days": 2,
    "stop": 842.3880597014926,
    "target": 999.6,
    "hold_days": 10,
    "atr_target": 1116.4179104477612,
    "atr_stop": 842.3880597014926,
    "target_src": "전체 +5%",
-   "last": 935.0
+   "last": 926.0
+  },
+  "214150": {
+   "name": "클래시스",
+   "qty": 421,
+   "entry": 23700.0,
+   "entry_date": "2026-11-16",
+   "days": 1,
+   "stop": 20279.0,
+   "target": 24885.0,
+   "hold_days": 10,
+   "atr_target": 28832.0,
+   "atr_stop": 20279.0,
+   "target_src": "전체 +5%",
+   "last": 23300.0
+  },
+  "064760": {
+   "name": "티씨케이",
+   "qty": 52,
+   "entry": 188100.0,
+   "entry_date": "2026-11-16",
+   "days": 1,
+   "stop": 152285.72037914692,
+   "target": 197505.0,
+   "hold_days": 10,
+   "atr_target": 241821.91469194312,
+   "atr_stop": 152285.72037914692,
+   "target_src": "전체 +5%",
+   "last": 173100.0
+  },
+  "013360": {
+   "name": "일성건설",
+   "qty": 7581,
+   "entry": 1310.0,
+   "entry_date": "2026-11-16",
+   "days": 1,
+   "stop": 1119.3100833965125,
+   "target": 1375.5,
+   "hold_days": 10,
+   "atr_target": 1596.0348749052312,
+   "atr_stop": 1119.3100833965125,
+   "target_src": "전체 +5%",
+   "last": 1298.0
+  },
+  "192650": {
+   "name": "드림텍",
+   "qty": 1647,
+   "entry": 5700.0,
+   "entry_date": "2026-11-16",
+   "days": 1,
+   "stop": 4465.852782764811,
+   "target": 5985.0,
+   "hold_days": 10,
+   "atr_target": 7551.220825852783,
+   "atr_stop": 4465.852782764811,
+   "target_src": "전체 +5%",
+   "last": 5450.0
+  },
+  "013870": {
+   "name": "지엠비코리아",
+   "qty": 2684,
+   "entry": 3725.0,
+   "entry_date": "2026-11-16",
+   "days": 1,
+   "stop": 3353.0040595399187,
+   "target": 3911.25,
+   "hold_days": 10,
+   "atr_target": 4282.489851150203,
+   "atr_stop": 3353.0040595399187,
+   "target_src": "전체 +5%",
+   "last": 3515.0
   }
  },
  "pending": [
   {
-   "code": "214150",
-   "name": "클래시스",
-   "qty": 421,
-   "entry_ref": 23700,
-   "stop": 20279,
-   "target": 28832,
-   "hold_days": 10,
-   "queued_at": "2026-11-16 08:02"
-  },
-  {
-   "code": "064760",
-   "name": "티씨케이",
-   "qty": 52,
-   "entry_ref": 189900,
-   "stop": 153743,
-   "target": 244136,
-   "hold_days": 10,
-   "queued_at": "2026-11-16 08:02"
-  },
-  {
-   "code": "013360",
-   "name": "일성건설",
-   "qty": 7581,
-   "entry_ref": 1319,
-   "stop": 1127,
-   "target": 1607,
-   "hold_days": 10,
-   "queued_at": "2026-11-16 08:02"
-  },
-  {
-   "code": "192650",
-   "name": "드림텍",
-   "qty": 1647,
-   "entry_ref": 5570,
-   "stop": 4364,
-   "target": 7379,
-   "hold_days": 10,
-   "queued_at": "2026-11-16 08:02"
-  },
-  {
    "code": "002960",
    "name": "한국쉘석유",
-   "qty": 21,
-   "entry_ref": 471500,
-   "stop": 434214,
-   "target": 527429,
+   "qty": 22,
+   "entry_ref": 436000,
+   "stop": 395429,
+   "target": 496857,
    "hold_days": 10,
-   "queued_at": "2026-11-16 08:02"
+   "queued_at": "2026-11-17 08:00"
   },
   {
    "code": "077500",
    "name": "유니퀘스트",
-   "qty": 733,
-   "entry_ref": 13500,
-   "stop": 10793,
-   "target": 17561,
+   "qty": 738,
+   "entry_ref": 13150,
+   "stop": 10416,
+   "target": 17251,
    "hold_days": 10,
-   "queued_at": "2026-11-16 08:02"
+   "queued_at": "2026-11-17 08:00"
   },
   {
-   "code": "013870",
-   "name": "지엠비코리아",
-   "qty": 2706,
-   "entry_ref": 3695,
-   "stop": 3326,
-   "target": 4248,
+   "code": "021240",
+   "name": "코웨이",
+   "qty": 93,
+   "entry_ref": 107300,
+   "stop": 96971,
+   "target": 122793,
    "hold_days": 10,
-   "queued_at": "2026-11-16 08:02"
+   "queued_at": "2026-11-17 08:00"
   }
  ],
  "closed": [
@@ -367,6 +383,39 @@
    "qty": 753,
    "ret_pct": 4.74,
    "reason": "목표"
+  },
+  {
+   "code": "021240",
+   "name": "코웨이",
+   "entry_date": "2026-11-12",
+   "exit_date": "2026-11-16",
+   "entry": 101400,
+   "exit": 106470,
+   "qty": 98,
+   "ret_pct": 4.74,
+   "reason": "목표"
+  },
+  {
+   "code": "002960",
+   "name": "한국쉘석유",
+   "entry_date": "2026-11-16",
+   "exit_date": "2026-11-16",
+   "entry": 469500,
+   "exit": 432372,
+   "qty": 21,
+   "ret_pct": -8.14,
+   "reason": "손절"
+  },
+  {
+   "code": "077500",
+   "name": "유니퀘스트",
+   "entry_date": "2026-11-16",
+   "exit_date": "2026-11-16",
+   "entry": 13500,
+   "exit": 14175,
+   "qty": 733,
+   "ret_pct": 4.74,
+   "reason": "목표"
   }
  ],
  "curve": [
@@ -393,6 +442,12 @@
    "equity": 201790420,
    "kospi": 5290.53,
    "kosdaq": 699.66
+  },
+  {
+   "date": "2026-11-16",
+   "equity": 200026879,
+   "kospi": 5100.5,
+   "kosdaq": 665.65
   }
  ],
  "rules": {
